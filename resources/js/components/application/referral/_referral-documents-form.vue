@@ -1,0 +1,105 @@
+<template>
+    <div class="divide-y divide-gray-200">
+        <v-content-body>
+            <v-section-heading>
+                <template #title>
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-pink-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25 21 12m0 0-3.75 3.75M21 12H3" />
+                            </svg>
+
+                            <span class="text-pink-500">Document</span> Information
+                        </div>
+
+                        <div class="text-red-500 font-medium italic" v-if="!form.state_id">
+                            Please select a referral state.
+                        </div>
+                    </div>
+                </template>
+            </v-section-heading>
+        </v-content-body>
+
+        <v-content-body>
+            <div class="relative grid grid-cols-1 gap-4">
+                <div class="w-full h-full absolute bg-white opacity-50" v-if="!form.state_id"></div>
+                <template v-for="(documentCategory, documentCategoryIndex) in documentCategories.data" :key="'documentCategory_' + documentCategoryIndex">
+                    <template v-if="documentCategory.document_types && documentCategory.document_types.length">
+                        <div class="space-y-1">
+                            <v-section-heading>
+                                <template #title>
+                                    {{ documentCategory.name }}
+                                </template>
+                            </v-section-heading>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <template v-for="(documentType, documentTypeIndex) in documentCategory.document_types" :key="'documentType_' + documentTypeIndex">
+                                    <v-card>
+                                        <v-content-body>
+                                            <v-form-group>
+                                                <v-form-label class="flex items-center justify-between">
+                                                    {{ documentType.name }}
+
+                                                    <template v-if="form.documents[documentType.document_type_id]">
+                                                        <v-link href="#" @click.stop="form.documents[documentType.document_type_id] = null">
+                                                            <span class="text-red-500 uppercase">
+                                                                Cancel
+                                                            </span>
+                                                        </v-link>
+                                                    </template>
+                                                </v-form-label>
+                                                <v-form-file v-model="form.documents[documentType.document_type_id]" />
+                                            </v-form-group>
+                                        </v-content-body>
+                                    </v-card>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </template>
+            </div>
+        </v-content-body>
+    </div>
+</template>
+
+<script>
+export default {
+    props: {
+        attorneys: {
+            type: Object,
+            required: true,
+            default: () => {},
+        },
+        doctors: {
+            type: Object,
+            required: true,
+            default: () => {},
+        },
+        documentCategories: {
+            type: Object,
+            required: true,
+            default: () => {},
+        },
+        form: {
+            type: Object,
+            required: true,
+            default: () => {},
+        },
+        patients: {
+            type: Object,
+            required: true,
+            default: () => {},
+        },
+        referralReasons: {
+            type: Object,
+            required: false,
+            default: () => {},
+        },
+        states: {
+            type: Object,
+            required: false,
+            default: () => {},
+        },
+    },
+};
+</script>

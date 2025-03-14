@@ -1,0 +1,1 @@
+import{_ as t}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{o,c as n,h as s}from"./app-C7DA4c70.js";const a={name:"ContentHeadComponent"},c={class:"v-content-head p-4 sm:px-6"};function r(e,p,d,_,m,f){return o(),n("div",c,[s(e.$slots,"default")])}const u=t(a,[["render",r]]);export{u as default};
