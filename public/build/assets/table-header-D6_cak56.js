@@ -1,1 +1,0 @@
-import{_ as t}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{o,c as a,h as s}from"./app-C7DA4c70.js";const r={name:"TableHeaderComponent"},n={class:"v-table-header p-4 sm:px-6 text-sm font-medium text-gray-500 text-left"};function c(e,l,m,p,d,f){return o(),a("th",n,[s(e.$slots,"default")])}const u=t(r,[["render",c]]);export{u as default};

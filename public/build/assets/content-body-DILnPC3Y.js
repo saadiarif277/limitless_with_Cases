@@ -1,1 +1,0 @@
-import{_ as t}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{o as e,c as n,h as s}from"./app-C7DA4c70.js";const c={name:"ContentBodyComponent"},r={class:"v-content-body p-4 sm:px-6"};function a(o,p,d,_,m,f){return e(),n("div",r,[s(o.$slots,"default")])}const u=t(c,[["render",a]]);export{u as default};

@@ -1,1 +1,0 @@
-import{_ as e}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{o as t,c as s,h as r}from"./app-C7DA4c70.js";const a={name:"TableRowComponent"},n={class:"v-table-row"};function c(o,l,p,_,f,m){return t(),s("tr",n,[r(o.$slots,"default")])}const u=e(a,[["render",c]]);export{u as default};
