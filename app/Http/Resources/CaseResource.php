@@ -2,20 +2,19 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class CaseResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(Request $request): array
+    public function toArray($request)
     {
-
-            return parent::toArray($request);
-
+        return [
+            'case_id' => $this->case_id,
+            'patient_name' => $this->patient_name,
+            'attorney_name' => $this->attorney_name,
+            'piloting_physician' => $this->piloting_physician,
+            'bill_type' => $this->bill_type,
+            'status' => $this->status,
+        ];
     }
 }

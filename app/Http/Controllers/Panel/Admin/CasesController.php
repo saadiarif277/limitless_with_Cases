@@ -48,18 +48,58 @@ class CasesController extends Controller
     /**
      * Display a listing of the resource.
      */
+    // public function index(Request $request): Response
+    // {
+    //     return Inertia::render('panel/admin/cases/cases-list', [
+    //         'cases' => CaseResource::collection(
+    //           Cases::query()
+    //                 ->select('cases.case_id as case_id', 'patients.name as patient_name', 'attorneys.name as attorney_name','doctors.name as piloting_physician','cases.billing_type as bill_type')
+    //                 ->join('users as patients', 'cases.patient_id', '=', 'patients.user_id')
+    //                 ->join('users as attorneys', 'cases.attorney_id', '=', 'attorneys.user_id')
+    //                 ->join('users as doctors', 'cases.piloting_physician_id', '=', 'doctors.user_id')
+    //                 ->get()
+    //         ),
+
+    //     ]);
+    // }
+
     public function index(Request $request): Response
     {
-        return Inertia::render('panel/admin/cases/cases-list', [
-            'cases' => CaseResource::collection(
-              Cases::query()
-                    ->select('cases.case_id as case_id', 'patients.name as patient_name', 'attorneys.name as attorney_name','doctors.name as piloting_physician','cases.billing_type as bill_type')
-                    ->join('users as patients', 'cases.patient_id', '=', 'patients.user_id')
-                    ->join('users as attorneys', 'cases.attorney_id', '=', 'attorneys.user_id')
-                    ->join('users as doctors', 'cases.piloting_physician_id', '=', 'doctors.user_id')
-                    ->get()
-            ),
+        // Fetch all cases with necessary fields
+        $cases = Cases::query()
+            ->select(
+                'cases.case_id as case_id',
+                'patients.name as patient_name',
+                'attorneys.name as attorney_name',
+                'doctors.name as piloting_physician',
+                'cases.billing_type as bill_type',
+                'cases.is_closed as is_closed',
+                'cases.case_won as case_won',
+                'cases.reduction_accepted as reduction_accepted'
+            )
+            ->join('users as patients', 'cases.patient_id', '=', 'patients.user_id')
+            ->join('users as attorneys', 'cases.attorney_id', '=', 'attorneys.user_id')
+            ->join('users as doctors', 'cases.piloting_physician_id', '=', 'doctors.user_id')
+            ->get();
 
+        // Calculate metrics
+        $totalCases = $cases->count();
+        $pendingCases = $cases->where('status', 'Pending')->count();
+        $completeCases = $cases->where('status', 'Complete')->count();
+        $reductionRequestSent = $cases->where('reduction_accepted', true)->count();
+        $wonCases = $cases->where('case_won', true)->count();
+        $lostCases = $cases->where('case_won', false)->where('is_closed', true)->count();
+
+        return Inertia::render('panel/admin/cases/cases-list', [
+            'cases' => CaseResource::collection($cases),
+            'metrics' => [
+                'totalCases' => $totalCases,
+                'pendingCases' => $pendingCases,
+                'completeCases' => $completeCases,
+                'reductionRequestSent' => $reductionRequestSent,
+                'wonCases' => $wonCases,
+                'lostCases' => $lostCases,
+            ],
         ]);
     }
 

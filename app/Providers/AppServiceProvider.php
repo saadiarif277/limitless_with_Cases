@@ -24,7 +24,9 @@ class AppServiceProvider extends ServiceProvider
         Carbon::serializeUsing(function ($carbon) {
             return $carbon->format('F j, Y - h:i:s A T');
         });
-       // URL::forceScheme('https');
+        if(App::enviroment('production')){
+            URL::forceScheme('https');
 
+        }
     }
 }

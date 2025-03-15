@@ -11,43 +11,72 @@ class Cases extends Model
     protected $primaryKey = 'case_id';
     protected $table = 'cases';
 
-
     protected $fillable = [
-        'patient_id',             // Patient associated with the case
-        'attorney_id',            // Attorney managing the case
-        'piloting_physician_id',  // Physician associated with the case
-        'policy_limit_info',      // Insurance policy information
-        'primary_referral_id',    // Primary referral ID
-        'referral_ids',           // Other referral IDs (likely a comma-separated list or JSON)
-        'icd10_codes',            // ICD-10 diagnosis codes (likely a comma-separated list)
-        'cpt_codes',              // CPT procedure codes (likely a comma-separated list)
-        'service_billed',         // Amount billed for the service
-        'billing_type',           // Type of billing
-        'is_cms1500_generated',   // Indicates if CMS-1500 is generated
-        'case_won',               // Indicates if the case is won
-        'outcome',                // Outcome of the case
-        'reduction_accepted',     // Indicates if reduction was accepted
-        'is_closed',              // Indicates if the case is closed
-        'closed_at',              // Timestamp when the case was closed
+        'patient_id',
+        'attorney_id',
+        'piloting_physician_id',
+        'policy_limit_info',
+        'primary_referral_id',
+        'referral_ids',
+        'icd10_codes',
+        'cpt_codes',
+        'service_billed',
+        'billing_type',
+        'is_cms1500_generated',
+        'case_won',
+        'outcome',
+        'reduction_accepted',
+        'is_closed',
+        'closed_at',
     ];
 
     public function patient()
     {
-        return $this->belongsTo(User::class, 'patient_id','user_id');
+        return $this->belongsTo(User::class, 'patient_id', 'user_id');
     }
 
     public function attorney()
     {
-        return $this->belongsTo(User::class, 'attorney_id','user_id');
+        return $this->belongsTo(User::class, 'attorney_id', 'user_id');
     }
 
     public function pilotingPhysician()
     {
-        return $this->belongsTo(User::class, 'piloting_physician_id','user_id');
+        return $this->belongsTo(User::class, 'piloting_physician_id', 'user_id');
     }
 
     public function primaryReferral()
     {
-        return $this->belongsTo(Referral::class, 'primary_referral_id');
+        return $this->belongsTo(Referral::class, 'primary_referral_id', 'referral_id');
+    }
+
+    /**
+     * Get all referrals attached to this case.
+     */
+    public function referrals()
+    {
+        $primaryReferral = $this->primaryReferral;
+        $additionalReferrals = Referral::whereIn('referral_id', explode(',', $this->referral_ids))->get();
+
+        return collect([$primaryReferral])->merge($additionalReferrals)->filter();
+    }
+
+    /**
+     * Determine the status of the case based on the status of its referrals.
+     */
+    public function getStatusAttribute()
+    {
+        $referrals = $this->referrals();
+
+        if ($referrals->isEmpty()) {
+            return 'Pending'; // No referrals, default to pending
+        }
+
+        // Check if all referrals are "Settled"
+        $allSettled = $referrals->every(function ($referral) {
+            return $referral->referralStatus->name === 'Settled';
+        });
+
+        return $allSettled ? 'Complete' : 'Pending';
     }
 }
