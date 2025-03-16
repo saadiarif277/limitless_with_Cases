@@ -35,7 +35,7 @@ use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class CasesController extends Controller
+class CasesController_backup extends Controller
 {
     private ReferralRepository $referralRepository;
 
@@ -309,79 +309,50 @@ class CasesController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-    {
-        // Validate the request
-        $validatedData = $request->validate([
-            'referral_status_id' => 'required|exists:referral_statuses,referral_status_id',
-            'state_id' => 'required|exists:states,state_id',
-            'patient_id' => 'required|exists:users,user_id',
-            'doctor_id' => 'required|exists:users,user_id',
-            'piloting_physician_id' => 'required|exists:users,user_id',
-            'attorney_id' => 'required|exists:users,user_id',
-            'policy_limit_info' => 'nullable|string',
-            'pip' => 'nullable|boolean',
-            'defendant_insurance' => 'nullable|string',
-            'plaintiff_insurance' => 'nullable|string',
-            'commercial_case' => 'nullable|boolean',
-            'type_of_accident' => 'nullable|string',
-            'icd_codes' => 'nullable|array', // Validate that icd_codes is an array
-            'icd_codes.*' => 'string', // Ensure each ICD code is a string
-            'referral_ids' => 'nullable|array', // Validate that referral_ids is an array
-            'referral_ids.*' => 'exists:referrals,referral_id', // Ensure each referral ID exists
-            'cpt_codes' => 'nullable|string',
-            'service_billed' => 'required|numeric',
-            'billing_type' => 'nullable|string|in:Insurance,LOP',
-            'is_cms1500_generated' => 'required|boolean',
-            'case_won' => 'nullable|boolean',
-            'outcome' => 'nullable|string',
-            'reduction_accepted' => 'nullable|boolean',
-            'is_closed' => 'required|boolean',
-            'closed_at' => 'nullable|date',
-        ]);
+{
+    // Validate the request
+    $request->validate([
+        'patient_id' => 'required|exists:users,id',
+        'attorney_id' => 'nullable|exists:users,id',
+        'piloting_physician_id' => 'nullable|exists:users,id',
+        'policy_limit_info' => 'nullable|string',
+        'primary_referral_id' => 'required|exists:referrals,referral_id',
+        'referral_ids' => 'nullable|array', // Validate that referral_ids is an array
+        'referral_ids.*' => 'exists:referrals,referral_id', // Ensure each referral ID exists
+        'icd10_codes' => 'nullable|string',
+        'cpt_codes' => 'nullable|string',
+        'service_billed' => 'required|numeric',
+        'billing_type' => 'nullable|string',
+        'is_cms1500_generated' => 'required|boolean',
+        'case_won' => 'nullable|boolean',
+        'outcome' => 'nullable|string',
+        'reduction_accepted' => 'nullable|boolean',
+        'is_closed' => 'required|boolean',
+        'closed_at' => 'nullable|date',
+    ]);
 
-        try {
-            // Convert arrays to comma-separated strings for database storage
-            $validatedData['icd10_codes'] = implode(',', $validatedData['icd_codes'] ?? []);
-            $validatedData['referral_ids'] = implode(',', $validatedData['referral_ids'] ?? []);
+    // Create the case
+    $case = Cases::create([
+        'patient_id' => $request->patient_id,
+        'attorney_id' => $request->attorney_id,
+        'piloting_physician_id' => $request->piloting_physician_id,
+        'policy_limit_info' => $request->policy_limit_info,
+        'primary_referral_id' => $request->primary_referral_id,
+        'referral_ids' => $request->referral_ids ? implode(',', $request->referral_ids) : null, // Store as comma-separated
+        'icd10_codes' => $request->icd10_codes,
+        'cpt_codes' => $request->cpt_codes,
+        'service_billed' => $request->service_billed,
+        'billing_type' => $request->billing_type,
+        'is_cms1500_generated' => $request->is_cms1500_generated,
+        'case_won' => $request->case_won,
+        'outcome' => $request->outcome,
+        'reduction_accepted' => $request->reduction_accepted,
+        'is_closed' => $request->is_closed,
+        'closed_at' => $request->closed_at,
+    ]);
 
-            // Set primary_referral_id to the first referral ID
-            $validatedData['primary_referral_id'] = $validatedData['referral_ids'][0] ?? null;
-
-            // Create the case
-            $case = Cases::create([
-                'referral_status_id' => $validatedData['referral_status_id'],
-                'state_id' => $validatedData['state_id'],
-                'patient_id' => $validatedData['patient_id'],
-                'doctor_id' => $validatedData['doctor_id'],
-                'piloting_physician_id' => $validatedData['piloting_physician_id'],
-                'attorney_id' => $validatedData['attorney_id'],
-                'policy_limit_info' => $validatedData['policy_limit_info'],
-                'pip' => $validatedData['pip'],
-                'defendant_insurance' => $validatedData['defendant_insurance'],
-                'plaintiff_insurance' => $validatedData['plaintiff_insurance'],
-                'commercial_case' => $validatedData['commercial_case'],
-                'type_of_accident' => $validatedData['type_of_accident'],
-                'primary_referral_id' => $validatedData['primary_referral_id'],
-                'icd10_codes' => $validatedData['icd10_codes'],
-                'referral_ids' => $validatedData['referral_ids'],
-                'cpt_codes' => $validatedData['cpt_codes'],
-                'service_billed' => $validatedData['service_billed'],
-                'billing_type' => $validatedData['billing_type'],
-                'is_cms1500_generated' => $validatedData['is_cms1500_generated'],
-                'case_won' => $validatedData['case_won'],
-                'outcome' => $validatedData['outcome'],
-                'reduction_accepted' => $validatedData['reduction_accepted'],
-                'is_closed' => $validatedData['is_closed'],
-                'closed_at' => $validatedData['closed_at'],
-            ]);
-
-            // Redirect back with success message
-            return redirect()->back()->with('success', 'Case created successfully!');
-        } catch (\Exception $e) {
-            // Redirect back with error message
-            return redirect()->back()->with('error', 'Failed to create case. Please try again.');
-        }
-    }
+    return response()->json($case, 201);
+}
 
 
     /**
@@ -405,102 +376,40 @@ class CasesController extends Controller
     //     ]);
     // }
     public function show($caseId)
-    {
-        // Fetch the case details by case_id
-        $case = Cases::with(['patient', 'attorney']) // Assuming you have relationships defined
-                    ->where('case_id', $caseId)
-                    ->firstOrFail();
+{
+    // Fetch the case details by case_id
+    $case = Cases::with(['patient', 'attorney']) // Assuming you have relationships defined
+                ->where('case_id', $caseId)
+                ->firstOrFail();
 
-        // Decode the policy limit info from JSON (if stored as JSON)
-        $case->policy_limit_info = json_decode($case->policy_limit_info);
+    // Decode the policy limit info from JSON
+    $case->policy_limit_info = json_decode($case->policy_limit_info);
 
-        // Fetch all referrals related to the case using referral_ids
-        $referralIds = explode(',', $case->referral_ids); // Split the comma-separated referral IDs
-        $referrals = Referral::whereIn('referral_id', $referralIds) // Fetch all referrals
-                            ->with(['reductionRequests']) // Eager load reduction requests
-                            ->get();
+    // Fetch the referrals related to the case
+    $referrals = Referral::where('referral_id', $case->primary_referral_id) // Assuming `case_id` is the relation key
+                        ->get();
+    $referrals = ReferralResource::collection($referrals);
 
-        // Process each referral to include reduction request details
-        $referrals->each(function ($referral) {
-            $referral->reductionRequests->each(function ($reductionRequest) {
-                // Add a badge for status
-                $reductionRequest->status_badge = $this->getStatusBadge($reductionRequest->referral_status);
-                // Format the amount
-                $reductionRequest->formatted_amount = number_format($reductionRequest->amount, 2);
-                // Add a link to the file if it exists
-                if ($reductionRequest->file_path) {
-                    $reductionRequest->file_link = asset('storage/' . $reductionRequest->file_path);
-                } else {
-                    $reductionRequest->file_link = null;
-                }
-            });
-        });
+    // Fetch ICD-10 code description (if available)
+    $icdCodeDescription = $case->icd10_codes ? IcdCode::find($case->icd10_codes)->description : 'No ICD-10 code';
 
-        // Fetch ICD-10 code descriptions (handling comma-separated values)
-        $icdCodeDescriptions = []; // Default fallback
-        if ($case->icd10_codes) {
-            $icdCodeValues = explode(',', $case->icd10_codes); // Split the comma-separated ICD-10 values
-
-            // Check if the values are IDs or codes
-            if (is_numeric($icdCodeValues[0])) {
-                // If the first value is numeric, assume they are IDs
-                $icdCodeDescriptions = IcdCode::whereIn('id', $icdCodeValues) // Fetch by IDs
-                                            ->pluck('description')
-                                            ->toArray();
-            } else {
-                // If the first value is not numeric, assume they are codes
-                $icdCodeDescriptions = IcdCode::whereIn('code', $icdCodeValues) // Fetch by codes
-                                            ->pluck('description')
-                                            ->toArray();
-            }
-
-            // If no descriptions are found, set a fallback message
-            if (empty($icdCodeDescriptions)) {
-                $icdCodeDescriptions = ['No ICD-10 codes'];
-            }
-        } else {
-            $icdCodeDescriptions = ['No ICD-10 codes']; // Fallback if icd10_codes is null or empty
-        }
-
-        // Fetch CPT codes descriptions (splitting the comma-separated values)
-        $cptCodeDescriptions = []; // Default fallback
-        if ($case->cpt_codes) {
-            $cptCodeIds = explode(',', $case->cpt_codes); // Split the comma-separated CPT code IDs
-            $cptCodeDescriptions = CptCode::whereIn('id', $cptCodeIds) // Fetch descriptions
-                                        ->pluck('description')
-                                        ->toArray();
-
-            // If no descriptions are found, set a fallback message
-            if (empty($cptCodeDescriptions)) {
-                $cptCodeDescriptions = ['No CPT codes'];
-            }
-        } else {
-            $cptCodeDescriptions = ['No CPT codes']; // Fallback if cpt_codes is null or empty
-        }
-
-        // Return the data to the Inertia view
-        return Inertia::render('panel/admin/cases/case-view', [
-            'caseDetails' => $case,
-            'icdCodeDescriptions' => $icdCodeDescriptions, // Updated to handle multiple ICD-10 codes
-            'cptCodeDescriptions' => $cptCodeDescriptions,
-            'referrals' => $referrals,
-        ]);
+    // Fetch CPT codes descriptions (splitting the comma-separated values)
+    $cptCodeDescriptions = [];
+    if ($case->cpt_codes) {
+        $cptCodeIds = explode(',', $case->cpt_codes);  // Split the comma-separated CPT code IDs
+        $cptCodeDescriptions = CptCode::whereIn('id', $cptCodeIds)->pluck('description')->toArray();  // Fetch descriptions
     }
 
-    // Helper function to get status badge
-    private function getStatusBadge($status)
-    {
-        switch ($status) {
-            case 'pending':
-                return '<span class="badge badge-warning">Pending</span>';
-            case 'accepted':
-                return '<span class="badge badge-success">Accepted</span>';
-            case 'rejected':
-                return '<span class="badge badge-danger">Rejected</span>';
-            default:
-                return '<span class="badge badge-secondary">Unknown</span>';
-        }
-    }
+    // Return the data to the Inertia view
+    return Inertia::render('panel/admin/cases/case-view', [
+        'caseDetails' => $case,
+        'icdCodeDescription' => $icdCodeDescription,
+        'cptCodeDescriptions' => $cptCodeDescriptions,
+        'referrals' => $referrals,
+    ]);
+}
+
+
     /**
      * Update the specified resource in storage.
      */

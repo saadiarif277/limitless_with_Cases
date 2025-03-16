@@ -1,19 +1,12 @@
 <template>
     <v-form class="h-full" @submit.prevent="submitForm">
         <div class="h-full divide-y divide-gray-200 space-y-12">
-            <!-- Referral Information Section -->
+            <!-- Case Details Section -->
             <div>
                 <v-content-body class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                    <!-- Referral Date -->
+                    <!-- Case Status -->
                     <v-form-group>
-                        <v-form-label>Referral Date</v-form-label>
-                        <v-form-input type="date" v-model="form.referral_date" :error="form.errors.referral_date" :disabled="form.processing" />
-                        <v-form-error v-if="form.errors.referral_date">{{ form.errors.referral_date }}</v-form-error>
-                    </v-form-group>
-
-                    <!-- Referral Status -->
-                    <v-form-group>
-                        <v-form-label>Referral Status</v-form-label>
+                        <v-form-label>Case Status</v-form-label>
                         <v-form-select
                             :options="referralStatuses.data.map((referralStatus) => ({ label: referralStatus.name, value: referralStatus.referral_status_id }))"
                             :error="form.errors.referral_status_id"
@@ -24,11 +17,11 @@
                         <v-form-error v-if="form.errors.referral_status_id">{{ form.errors.referral_status_id }}</v-form-error>
                     </v-form-group>
 
-                    <!-- Referral State -->
+                    <!-- Case State -->
                     <v-form-group>
-                        <v-form-label>Referral State</v-form-label>
+                        <v-form-label>Case State</v-form-label>
                         <v-form-select
-                            :options="(referralStates || states).data.map((state) => ({ label: state.name, value: state.state_id }))"
+                            :options="(states).data.map((state) => ({ label: state.name, value: state.state_id }))"
                             :error="form.errors.state_id"
                             :disabled="form.processing"
                             :required="true"
@@ -38,147 +31,175 @@
                     </v-form-group>
 
                     <!-- Patient Selection -->
-                    <x-referral-patient-form
-                        :attorneys="attorneys"
-                        :doctors="doctors"
-                        :document-categories="documentCategories"
-                        :form="form"
-                        :medical-specialties="medicalSpecialties"
-                        :patients="patients"
-                        :referral-reasons="referralReasons"
-                        :referral-statuses="referralStatuses"
-                        :states="states"
-                    />
+                    <v-form-group>
+                        <v-form-label>Patient</v-form-label>
+                        <v-form-select
+                            :options="patients.data.map((patient) => ({ label: patient.name, value: patient.user_id }))"
+                            :error="form.errors.patient_id"
+                            :disabled="form.processing"
+                            :required="true"
+                            v-model="form.patient_id"
+                        />
+                        <v-form-error v-if="form.errors.patient_id">{{ form.errors.patient_id }}</v-form-error>
+                    </v-form-group>
                 </v-content-body>
             </div>
 
             <!-- Physician and Attorney Section -->
             <div>
                 <v-content-body class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                    <!-- Doctor Selection -->
+                    <v-form-group>
+                        <v-form-label>Doctor</v-form-label>
+                        <v-form-select
+                            :options="doctors.data.map((doctor) => ({ label: doctor.name, value: doctor.user_id }))"
+                            :error="form.errors.doctor_id"
+                            :disabled="form.processing"
+                            :required="true"
+                            v-model="form.doctor_id"
+                        />
+                        <v-form-error v-if="form.errors.doctor_id">{{ form.errors.doctor_id }}</v-form-error>
+                    </v-form-group>
+
                     <!-- Piloting Physician -->
                     <v-form-group>
                         <v-form-label>Piloting Physician</v-form-label>
                         <v-form-select
-                            :items="doctors"
-                            item-value="id"
-                            item-text="name"
-                            label="Piloting Physician (Optional)"
-                            dense outlined
+                            :options="doctors.data.map((doctor) => ({ label: doctor.name, value: doctor.user_id }))"
+                            :error="form.errors.piloting_physician_id"
+                            :disabled="form.processing"
+                            :required="true"
                             v-model="form.piloting_physician_id"
                         />
+                        <v-form-error v-if="form.errors.piloting_physician_id">{{ form.errors.piloting_physician_id }}</v-form-error>
                     </v-form-group>
 
                     <!-- Attorney Selection -->
                     <v-form-group>
                         <v-form-label>Attorney</v-form-label>
                         <v-form-select
-                            :items="attorneys"
-                            item-value="id"
-                            item-text="name"
-                            label="Attorney"
-                            dense outlined
+                            :options="attorneys.data.map((attorney) => ({ label: attorney.name, value: attorney.user_id }))"
+                            :error="form.errors.attorney_id"
+                            :disabled="form.processing"
+                            :required="true"
                             v-model="form.attorney_id"
                         />
+                        <v-form-error v-if="form.errors.attorney_id">{{ form.errors.attorney_id }}</v-form-error>
                     </v-form-group>
                 </v-content-body>
             </div>
 
-            <!-- Billing and CPT Codes Section -->
+            <!-- Policy and Insurance Details Section -->
             <div>
                 <v-content-body class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                    <!-- CPT Codes -->
+                    <!-- Policy Limit Info -->
                     <v-form-group>
-                        <v-form-label>CPT Codes</v-form-label>
-                        <v-form-textarea
-                            label="CPT Codes"
-                            dense outlined
-                            v-model="form.cpt_codes"
-                        />
-                    </v-form-group>
-
-                    <!-- Service Billed -->
-                    <v-form-group>
-                        <v-form-label>Service Billed</v-form-label>
+                        <v-form-label>Policy Limit Info</v-form-label>
                         <v-form-input
-                            type="number"
-                            label="Service Billed"
-                            dense outlined
-                            v-model="form.service_billed"
+                            type="text"
+                            v-model="form.policy_limit_info"
+                            :error="form.errors.policy_limit_info"
+                            :disabled="form.processing"
                         />
+                        <v-form-error v-if="form.errors.policy_limit_info">{{ form.errors.policy_limit_info }}</v-form-error>
                     </v-form-group>
 
-                    <!-- CMS1500 Generated -->
+                    <!-- PIP (Personal Injury Protection) -->
                     <v-form-group>
-                        <v-form-label>Generate CMS1500 Invoice?</v-form-label>
+                        <v-form-label>PIP (Personal Injury Protection)</v-form-label>
                         <v-form-checkbox
-                            label="CMS1500 Generated"
-                            v-model="form.is_cms1500_generated"
+                            v-model="form.pip"
+                            :error="form.errors.pip"
+                            :disabled="form.processing"
                         />
+                        <v-form-error v-if="form.errors.pip">{{ form.errors.pip }}</v-form-error>
                     </v-form-group>
 
-                    <!-- LOP or Insurance -->
+                    <!-- Defendant Insurance -->
                     <v-form-group>
-                        <v-form-label>Billing Type</v-form-label>
+                        <v-form-label>Defendant Insurance</v-form-label>
+                        <v-form-input
+                            type="text"
+                            v-model="form.defendant_insurance"
+                            :error="form.errors.defendant_insurance"
+                            :disabled="form.processing"
+                        />
+                        <v-form-error v-if="form.errors.defendant_insurance">{{ form.errors.defendant_insurance }}</v-form-error>
+                    </v-form-group>
+
+                    <!-- Plaintiff Insurance -->
+                    <v-form-group>
+                        <v-form-label>Plaintiff Insurance</v-form-label>
+                        <v-form-input
+                            type="text"
+                            v-model="form.plaintiff_insurance"
+                            :error="form.errors.plaintiff_insurance"
+                            :disabled="form.processing"
+                        />
+                        <v-form-error v-if="form.errors.plaintiff_insurance">{{ form.errors.plaintiff_insurance }}</v-form-error>
+                    </v-form-group>
+
+                    <!-- Commercial Case -->
+                    <v-form-group>
+                        <v-form-label>Commercial Case</v-form-label>
+                        <v-form-checkbox
+                            v-model="form.commercial_case"
+                            :error="form.errors.commercial_case"
+                            :disabled="form.processing"
+                        />
+                        <v-form-error v-if="form.errors.commercial_case">{{ form.errors.commercial_case }}</v-form-error>
+                    </v-form-group>
+
+                    <!-- Type of Accident -->
+                    <v-form-group>
+                        <v-form-label>Type of Accident</v-form-label>
                         <v-form-select
-                            :items="['LOP', 'Insurance']"
-                            label="Billing Type"
-                            dense outlined
-                            v-model="form.billing_type"
+                            :options="[
+                                { label: 'Motor Vehicle', value: 'motor_vehicle' },
+                                { label: 'Slip and Fall', value: 'slip_and_fall' },
+                                { label: 'Other', value: 'other' }
+                            ]"
+                            :error="form.errors.type_of_accident"
+                            :disabled="form.processing"
+                            v-model="form.type_of_accident"
                         />
+                        <v-form-error v-if="form.errors.type_of_accident">{{ form.errors.type_of_accident }}</v-form-error>
                     </v-form-group>
                 </v-content-body>
             </div>
 
-            <!-- Case Outcome Section -->
+            <!-- ICD Codes Section -->
             <div>
                 <v-content-body class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                    <!-- Case Won -->
+                    <!-- ICD Codes -->
                     <v-form-group>
-                        <v-form-label>Case Won</v-form-label>
-                        <v-form-checkbox
-                            label="Case Won"
-                            v-model="form.case_won"
+                        <v-form-label>ICD Codes</v-form-label>
+                        <v-form-select
+                            :options="icdCodes.data.map((icdCode) => ({ label: `${icdCode.code} - ${icdCode.description}`, value: icdCode.code }))"
+                            :error="form.errors.icd_codes"
+                            :disabled="form.processing"
+                            :multiple="true"
+                            v-model="form.icd_codes"
                         />
+                        <v-form-error v-if="form.errors.icd_codes">{{ form.errors.icd_codes }}</v-form-error>
                     </v-form-group>
+                </v-content-body>
+            </div>
 
-                    <!-- Outcome -->
+            <!-- Referrals Section -->
+            <div>
+                <v-content-body class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                    <!-- Referrals -->
                     <v-form-group>
-                        <v-form-label>Outcome</v-form-label>
-                        <v-form-textarea
-                            label="Outcome"
-                            dense outlined
-                            v-model="form.outcome"
+                        <v-form-label>Referrals</v-form-label>
+                        <v-form-select
+                            :options="referrals.data.map((referral) => ({ label: `Referral #${referral.referral_id} - ${referral.patient_user.name}`, value: referral.referral_id }))"
+                            :error="form.errors.referral_ids"
+                            :disabled="form.processing"
+                            :multiple="true"
+                            v-model="form.referral_ids"
                         />
-                    </v-form-group>
-
-                    <!-- Reduction Accepted -->
-                    <v-form-group>
-                        <v-form-label>Reduction Accepted</v-form-label>
-                        <v-form-checkbox
-                            label="Reduction Accepted"
-                            v-model="form.reduction_accepted"
-                        />
-                    </v-form-group>
-
-                    <!-- Is Closed -->
-                    <v-form-group>
-                        <v-form-label>Is Case Closed?</v-form-label>
-                        <v-form-checkbox
-                            label="Is Closed"
-                            v-model="form.is_closed"
-                            @change="handleCloseChange"
-                        />
-                    </v-form-group>
-
-                    <!-- Closed At -->
-                    <v-form-group v-if="form.is_closed">
-                        <v-form-label>Closed At</v-form-label>
-                        <v-form-input
-                            type="datetime-local"
-                            label="Closed At"
-                            dense outlined
-                            v-model="form.closed_at"
-                        />
+                        <v-form-error v-if="form.errors.referral_ids">{{ form.errors.referral_ids }}</v-form-error>
                     </v-form-group>
                 </v-content-body>
             </div>
@@ -192,20 +213,10 @@
 </template>
 
 <script>
-import ReferralAttorneyForm from "./_referral-attorney-form.vue";
-import ReferralDoctorForm from "./_referral-doctor-form.vue";
-import ReferralDocumentsForm from "./_referral-documents-form.vue";
-import ReferralPatientForm from "./_referral-patient-form.vue";
 import { useForm } from "@inertiajs/vue3";
 
 export default {
     name: "CaseReferralCreateForm",
-    components: {
-        "x-referral-attorney-form": ReferralAttorneyForm,
-        "x-referral-doctor-form": ReferralDoctorForm,
-        "x-referral-documents-form": ReferralDocumentsForm,
-        "x-referral-patient-form": ReferralPatientForm,
-    },
     props: {
         attorneys: { type: Object, required: true },
         doctors: { type: Object, required: true },
@@ -216,17 +227,31 @@ export default {
         referralStatuses: { type: Object, required: false },
         referralStates: { type: Object, required: false },
         states: { type: Object, required: false },
+        icdCodes: { type: Object, required: true },
+        referrals: { type: Object, required: true },
         listRoute: { type: String, default: "panel.admin.referrals.index" },
         storeRoute: { type: String, default: "panel.admin.referrals.store" },
+    },
+    created() {
+        console.log("Props received:", this.$props);
     },
     data() {
         return {
             form: useForm({
-                referral_date: new Date().toISOString().split('T')[0],
                 referral_status_id: 1,
                 state_id: this.$page.props.auth.user.state_id || "",
-                attorney_id: null,
+                patient_id: null,
+                doctor_id: null,
                 piloting_physician_id: null,
+                attorney_id: null,
+                policy_limit_info: "",
+                pip: false,
+                defendant_insurance: "",
+                plaintiff_insurance: "",
+                commercial_case: false,
+                type_of_accident: "motor_vehicle",
+                icd_codes: [],
+                referral_ids: [],
                 cpt_codes: "",
                 service_billed: 0.0,
                 is_cms1500_generated: false,
@@ -236,28 +261,19 @@ export default {
                 reduction_accepted: false,
                 is_closed: false,
                 closed_at: null,
-                created_at: null,
-                updated_at: null,
             }),
         };
     },
     methods: {
         submitForm() {
             this.form.post(this.route(this.storeRoute), {
-                onSuccess: () => this.$toast().success("Referral created successfully!"),
+                onSuccess: () => this.$toast().success("Case created successfully!"),
                 onError: (errors) => {
                     Object.keys(errors).forEach((key) => {
                         this.$toast().error(errors[key]);
                     });
                 },
             });
-        },
-        handleCloseChange() {
-            if (this.form.is_closed) {
-                this.form.closed_at = new Date().toISOString();
-            } else {
-                this.form.closed_at = null;
-            }
         },
     },
 };

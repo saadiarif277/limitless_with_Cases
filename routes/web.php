@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\ReductionRequestController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,6 +39,14 @@ Route::group(['middleware' => ['auth']], function() {
     | The routes found here are catered to the usage of the user.
     |
     */
+
+    Route::post('/reduction-requests', [ReductionRequestController::class, 'store']);
+
+    // Update a reduction request (e.g., doctor's decision or counter offer)
+    Route::put('/reduction-requests/{id}', [ReductionRequestController::class, 'update']);
+
+    // Get all reduction requests for a case
+    Route::get('/cases/{caseId}/reduction-requests', [ReductionRequestController::class, 'index']);
 
     Route::group(['middleware' => ['panel.redirect.to.admin']], function() {
 

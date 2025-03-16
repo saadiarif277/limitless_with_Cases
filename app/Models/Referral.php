@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Mail;
+use App\Models\reductionRequest;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 
 class Referral extends Model
 {
@@ -57,8 +60,8 @@ class Referral extends Model
 
     /**
      * The "boot" method of the model.
-     * 
-     * Here we define the model's event hooks, particularly 
+     *
+     * Here we define the model's event hooks, particularly
      * the action to take when a new Referral model instance is created.
      */
     protected static function boot()
@@ -67,7 +70,7 @@ class Referral extends Model
 
         /**
          * Register a created model event with the dispatcher.
-         * 
+         *
          * @param \App\Models\Referral $referral The newly created referral instance.
          * @return void
          */
@@ -161,5 +164,10 @@ class Referral extends Model
     public function state()
     {
         return $this->belongsTo(State::class, 'state_id', 'state_id');
+    }
+
+    public function reductionRequests(): HasMany
+    {
+        return $this->hasMany(ReductionRequest::class, 'referral_id', 'referral_id');
     }
 }
