@@ -15,7 +15,7 @@ use App\Http\Resources\StateResource;
 use App\Http\Resources\UserResource;
 use App\Http\Requests\DestroyReferralRequest;
 use App\Http\Requests\StoreReferralRequest;
-use App\Http\Requests\UpdateReferralRequest;
+
 use App\Repositories\ReferralRepository;
 use App\Models\Document;
 use App\Models\Cases;
@@ -34,18 +34,10 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Http;
 
 class CasesController extends Controller
 {
-    private ReferralRepository $referralRepository;
-
-    /**
-     * Create a new instance.
-     */
-    public function __construct(ReferralRepository $referralRepository)
-    {
-        $this->referralRepository = $referralRepository;
-    }
 
     /**
      * Display a listing of the resource.
@@ -104,6 +96,66 @@ class CasesController extends Controller
             ],
         ]);
     }
+    // public function updateBilling(Request $request, $case_id)
+    // {
+    //     // Find the case
+    //     $case = Cases::findOrFail($case_id);
+
+
+    //     // Validate the request data
+    //     $data = $request->validate([
+    //         'billing_type' => 'required|in:LOP,Insurance',
+    //         'cpt_codes' => 'nullable|json', // Ensure cpt_codes is a valid JSON string
+    //         'is_cms1500_generated' => 'boolean',
+    //     ]);
+
+
+
+    //     // Decode the cpt_codes JSON string into an array
+    //     if (isset($data['cpt_codes'])) {
+    //         $data['cpt_codes'] = json_decode($data['cpt_codes'], true);
+
+    //     } else {
+    //         $data['cpt_codes'] = []; // Set to an empty array if cpt_codes is null
+    //     }
+
+    //     // Update the case with the validated and processed data
+    //     $case->update($data);
+
+    //     // Redirect back with a success message
+    //     return redirect()->back()->with('success', 'Billing information updated successfully.');
+    // }
+
+    public function updateBilling(Request $request, $case_id)
+{
+    // Find the case
+    $case = Cases::findOrFail($case_id);
+
+    // Validate the request data
+    $data = $request->validate([
+        'billing_type' => 'required|in:LOP,Insurance',
+        'cpt_codes' => 'nullable|json', // Ensure cpt_codes is a valid JSON string
+        'is_cms1500_generated' => 'boolean',
+    ]);
+
+    // Decode the cpt_codes JSON string into an array
+    if (isset($data['cpt_codes'])) {
+        $data['cpt_codes'] = json_decode($data['cpt_codes'], true);
+
+        // Validate the decoded cpt_codes array
+        if (!is_array($data['cpt_codes'])) {
+            return redirect()->back()->withErrors(['cpt_codes' => 'Invalid CPT codes format.'])->withInput();
+        }
+    } else {
+        $data['cpt_codes'] = []; // Set to an empty array if cpt_codes is null
+    }
+
+    // Update the case with the validated and processed data
+    $case->update($data);
+
+    // Redirect back with a success message
+    return redirect()->back()->with('success', 'Billing information updated successfully.');
+}
 
     /**
      * Show the form for creating a new resource.
@@ -404,89 +456,175 @@ class CasesController extends Controller
     //         'referrals' => $referrals,
     //     ]);
     // }
+    // public function show($caseId)
+    // {
+    //     // Fetch the case details by case_id
+    //     $case = Cases::with(['patient', 'attorney']) // Assuming you have relationships defined
+    //                 ->where('case_id', $caseId)
+    //                 ->firstOrFail();
+
+    //     // Decode the policy limit info from JSON (if stored as JSON)
+    //     $case->policy_limit_info = json_decode($case->policy_limit_info);
+
+    //     // Fetch all referrals related to the case using referral_ids
+    //     $referralIds = explode(',', $case->referral_ids); // Split the comma-separated referral IDs
+    //     $referrals = Referral::whereIn('referral_id', $referralIds) // Fetch all referrals
+    //                         ->with(['reductionRequests']) // Eager load reduction requests
+    //                         ->get();
+
+    //     // Process each referral to include reduction request details
+    //     $referrals->each(function ($referral) {
+    //         $referral->reductionRequests->each(function ($reductionRequest) {
+    //             // Add a badge for status
+    //             $reductionRequest->status_badge = $this->getStatusBadge($reductionRequest->referral_status);
+    //             // Format the amount
+    //             $reductionRequest->formatted_amount = number_format($reductionRequest->amount, 2);
+    //             // Add a link to the file if it exists
+    //             if ($reductionRequest->file_path) {
+    //                 $reductionRequest->file_link = asset('storage/' . $reductionRequest->file_path);
+    //             } else {
+    //                 $reductionRequest->file_link = null;
+    //             }
+    //         });
+    //     });
+
+    //     // Fetch ICD-10 code descriptions (handling comma-separated values)
+    //     $icdCodeDescriptions = []; // Default fallback
+    //     if ($case->icd10_codes) {
+    //         $icdCodeValues = explode(',', $case->icd10_codes); // Split the comma-separated ICD-10 values
+
+    //         // Check if the values are IDs or codes
+    //         if (is_numeric($icdCodeValues[0])) {
+    //             // If the first value is numeric, assume they are IDs
+    //             $icdCodeDescriptions = IcdCode::whereIn('id', $icdCodeValues) // Fetch by IDs
+    //                                         ->pluck('description')
+    //                                         ->toArray();
+    //         } else {
+    //             // If the first value is not numeric, assume they are codes
+    //             $icdCodeDescriptions = IcdCode::whereIn('code', $icdCodeValues) // Fetch by codes
+    //                                         ->pluck('description')
+    //                                         ->toArray();
+    //         }
+
+    //         // If no descriptions are found, set a fallback message
+    //         if (empty($icdCodeDescriptions)) {
+    //             $icdCodeDescriptions = ['No ICD-10 codes'];
+    //         }
+    //     } else {
+    //         $icdCodeDescriptions = ['No ICD-10 codes']; // Fallback if icd10_codes is null or empty
+    //     }
+
+    //     // Fetch CPT codes descriptions (splitting the comma-separated values)
+    //     $cptCodeDescriptions = []; // Default fallback
+    //     if ($case->cpt_codes) {
+    //         $cptCodeIds = explode(',', $case->cpt_codes); // Split the comma-separated CPT code IDs
+    //         $cptCodeDescriptions = CptCode::whereIn('id', $cptCodeIds) // Fetch descriptions
+    //                                     ->pluck('description')
+    //                                     ->toArray();
+
+    //         // If no descriptions are found, set a fallback message
+    //         if (empty($cptCodeDescriptions)) {
+    //             $cptCodeDescriptions = ['No CPT codes'];
+    //         }
+    //     } else {
+    //         $cptCodeDescriptions = ['No CPT codes']; // Fallback if cpt_codes is null or empty
+    //     }
+
+    //     // Return the data to the Inertia view
+    //     return Inertia::render('panel/admin/cases/case-view', [
+    //         'caseDetails' => $case,
+    //         'icdCodeDescriptions' => $icdCodeDescriptions, // Updated to handle multiple ICD-10 codes
+    //         'cptCodeDescriptions' => $cptCodeDescriptions,
+    //         'referrals' => $referrals,
+    //     ]);
+    // }
+
     public function show($caseId)
-    {
-        // Fetch the case details by case_id
-        $case = Cases::with(['patient', 'attorney']) // Assuming you have relationships defined
-                    ->where('case_id', $caseId)
-                    ->firstOrFail();
+{
+    // Fetch the case details by case_id
+    $case = Cases::with(['patient', 'attorney']) // Assuming you have relationships defined
+                ->where('case_id', $caseId)
+                ->firstOrFail();
 
-        // Decode the policy limit info from JSON (if stored as JSON)
-        $case->policy_limit_info = json_decode($case->policy_limit_info);
+    // Decode the policy limit info from JSON (if stored as JSON)
+    $case->policy_limit_info = json_decode($case->policy_limit_info);
 
-        // Fetch all referrals related to the case using referral_ids
-        $referralIds = explode(',', $case->referral_ids); // Split the comma-separated referral IDs
-        $referrals = Referral::whereIn('referral_id', $referralIds) // Fetch all referrals
-                            ->with(['reductionRequests']) // Eager load reduction requests
-                            ->get();
+    // Fetch all referrals related to the case using referral_ids
+    $referralIds = explode(',', $case->referral_ids); // Split the comma-separated referral IDs
+    $referrals = Referral::whereIn('referral_id', $referralIds) // Fetch all referrals
+                        ->with(['reductionRequests']) // Eager load reduction requests
+                        ->get();
 
-        // Process each referral to include reduction request details
-        $referrals->each(function ($referral) {
-            $referral->reductionRequests->each(function ($reductionRequest) {
-                // Add a badge for status
-                $reductionRequest->status_badge = $this->getStatusBadge($reductionRequest->referral_status);
-                // Format the amount
-                $reductionRequest->formatted_amount = number_format($reductionRequest->amount, 2);
-                // Add a link to the file if it exists
-                if ($reductionRequest->file_path) {
-                    $reductionRequest->file_link = asset('storage/' . $reductionRequest->file_path);
-                } else {
-                    $reductionRequest->file_link = null;
-                }
-            });
-        });
-
-        // Fetch ICD-10 code descriptions (handling comma-separated values)
-        $icdCodeDescriptions = []; // Default fallback
-        if ($case->icd10_codes) {
-            $icdCodeValues = explode(',', $case->icd10_codes); // Split the comma-separated ICD-10 values
-
-            // Check if the values are IDs or codes
-            if (is_numeric($icdCodeValues[0])) {
-                // If the first value is numeric, assume they are IDs
-                $icdCodeDescriptions = IcdCode::whereIn('id', $icdCodeValues) // Fetch by IDs
-                                            ->pluck('description')
-                                            ->toArray();
+    // Process each referral to include reduction request details
+    $referrals->each(function ($referral) {
+        $referral->reductionRequests->each(function ($reductionRequest) {
+            // Add a badge for status
+            $reductionRequest->status_badge = $this->getStatusBadge($reductionRequest->referral_status);
+            // Format the amount
+            $reductionRequest->formatted_amount = number_format($reductionRequest->amount, 2);
+            // Add a link to the file if it exists
+            if ($reductionRequest->file_path) {
+                $reductionRequest->file_link = asset('storage/' . $reductionRequest->file_path);
             } else {
-                // If the first value is not numeric, assume they are codes
-                $icdCodeDescriptions = IcdCode::whereIn('code', $icdCodeValues) // Fetch by codes
-                                            ->pluck('description')
-                                            ->toArray();
+                $reductionRequest->file_link = null;
             }
+        });
+    });
 
-            // If no descriptions are found, set a fallback message
-            if (empty($icdCodeDescriptions)) {
-                $icdCodeDescriptions = ['No ICD-10 codes'];
-            }
-        } else {
-            $icdCodeDescriptions = ['No ICD-10 codes']; // Fallback if icd10_codes is null or empty
-        }
+    // Fetch ICD-10 code descriptions (handling comma-separated values)
+    $icdCodeDescriptions = []; // Default fallback
+    if ($case->icd10_codes) {
+        $icdCodeValues = explode(',', $case->icd10_codes); // Split the comma-separated ICD-10 values
 
-        // Fetch CPT codes descriptions (splitting the comma-separated values)
-        $cptCodeDescriptions = []; // Default fallback
-        if ($case->cpt_codes) {
-            $cptCodeIds = explode(',', $case->cpt_codes); // Split the comma-separated CPT code IDs
-            $cptCodeDescriptions = CptCode::whereIn('id', $cptCodeIds) // Fetch descriptions
+        // Check if the values are IDs or codes
+        if (is_numeric($icdCodeValues[0])) {
+            // If the first value is numeric, assume they are IDs
+            $icdCodeDescriptions = IcdCode::whereIn('id', $icdCodeValues) // Fetch by IDs
                                         ->pluck('description')
                                         ->toArray();
-
-            // If no descriptions are found, set a fallback message
-            if (empty($cptCodeDescriptions)) {
-                $cptCodeDescriptions = ['No CPT codes'];
-            }
         } else {
-            $cptCodeDescriptions = ['No CPT codes']; // Fallback if cpt_codes is null or empty
+            // If the first value is not numeric, assume they are codes
+            $icdCodeDescriptions = IcdCode::whereIn('code', $icdCodeValues) // Fetch by codes
+                                        ->pluck('description')
+                                        ->toArray();
         }
 
-        // Return the data to the Inertia view
-        return Inertia::render('panel/admin/cases/case-view', [
-            'caseDetails' => $case,
-            'icdCodeDescriptions' => $icdCodeDescriptions, // Updated to handle multiple ICD-10 codes
-            'cptCodeDescriptions' => $cptCodeDescriptions,
-            'referrals' => $referrals,
-        ]);
+        // If no descriptions are found, set a fallback message
+        if (empty($icdCodeDescriptions)) {
+            $icdCodeDescriptions = ['No ICD-10 codes'];
+        }
+    } else {
+        $icdCodeDescriptions = ['No ICD-10 codes']; // Fallback if icd10_codes is null or empty
     }
 
+    // Fetch all available CPT codes for the dropdown
+    $allCptCodes = CptCode::all(['id', 'code', 'description']); // Fetch all CPT codes with their descriptions
+
+    // Fetch CPT codes descriptions for the case (splitting the comma-separated values)
+    $cptCodeDescriptions = []; // Default fallback
+    if ($case->cpt_codes) {
+        $cptCodeIds = explode(',', $case->cpt_codes); // Split the comma-separated CPT code IDs
+        $cptCodeDescriptions = CptCode::whereIn('id', $cptCodeIds) // Fetch descriptions
+                                    ->pluck('description')
+                                    ->toArray();
+
+        // If no descriptions are found, set a fallback message
+        if (empty($cptCodeDescriptions)) {
+            $cptCodeDescriptions = ['No CPT codes'];
+        }
+    } else {
+        $cptCodeDescriptions = ['No CPT codes']; // Fallback if cpt_codes is null or empty
+    }
+
+    // Return the data to the Inertia view
+    return Inertia::render('panel/admin/cases/case-view', [
+        'caseDetails' => $case,
+        'icdCodeDescriptions' => $icdCodeDescriptions, // Updated to handle multiple ICD-10 codes
+        'cptCodeDescriptions' => $cptCodeDescriptions,
+        'referrals' => $referrals,
+        'allCptCodes' => $allCptCodes, // Pass all CPT codes for the dropdown
+    ]);
+}
     // Helper function to get status badge
     private function getStatusBadge($status)
     {
@@ -571,5 +709,115 @@ class CasesController extends Controller
         $referral->documents()->delete();
         $referral->delete();
         return to_route('panel.admin.referrals.index');
+    }
+
+    /**
+     * Save the CMS 1500 form data
+     */
+    public function saveForm(Request $request, Cases $case)
+    {
+        try {
+            // Validate the request
+            $validated = $request->validate([
+                'form_data' => 'required|array',
+                'status' => 'required|in:draft,completed'
+            ]);
+
+            // Create a new form record
+            $form = $case->forms()->create([
+                'form_data' => $validated['form_data'],
+                'status' => $validated['status'],
+                'type' => 'cms1500'
+            ]);
+
+            // If the form is completed, generate and store the PDF
+            if ($validated['status'] === 'completed') {
+                // Generate PDF using DocuSeal API
+                $pdf = $this->generateFormPDF($validated['form_data']);
+
+                // Store the PDF
+                $form->update([
+                    'pdf_path' => $pdf
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'form_id' => $form->id
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Download the CMS 1500 form PDF
+     */
+    public function downloadForm(Cases $case, Form $form)
+    {
+        try {
+            // Check if the form belongs to the case
+            if ($form->case_id !== $case->id) {
+                abort(404);
+            }
+
+            // Check if the form has a PDF
+            if (!$form->pdf_path) {
+                abort(404);
+            }
+
+            // Get the PDF file path
+            $path = storage_path('app/' . $form->pdf_path);
+
+            // Check if the file exists
+            if (!file_exists($path)) {
+                abort(404);
+            }
+
+            // Return the PDF file
+            return response()->file($path, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="CMS-1500-Form.pdf"'
+            ]);
+        } catch (\Exception $e) {
+            abort(500);
+        }
+    }
+
+    /**
+     * Generate PDF from form data using DocuSeal API
+     */
+    private function generateFormPDF($formData)
+    {
+        try {
+            // Make API call to DocuSeal to generate PDF
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . config('services.docuseal.api_key'),
+                'Content-Type' => 'application/json'
+            ])->post('https://api.docuseal.com/v1/submissions/generate_pdf', [
+                'form_data' => $formData
+            ]);
+
+            if (!$response->successful()) {
+                throw new \Exception('Failed to generate PDF');
+            }
+
+            // Get the PDF content
+            $pdfContent = $response->body();
+
+            // Generate a unique filename
+            $filename = 'cms1500_' . uniqid() . '.pdf';
+
+            // Store the PDF
+            Storage::put('public/forms/' . $filename, $pdfContent);
+
+            // Return the relative path
+            return 'public/forms/' . $filename;
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to generate PDF: ' . $e->getMessage());
+        }
     }
 }

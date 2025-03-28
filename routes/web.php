@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ReductionRequestController;
+use App\Http\Controllers\Panel\Admin\CasesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -97,6 +98,11 @@ Route::group(['middleware' => ['auth']], function() {
                 'cases' =>  \App\Http\Controllers\Panel\User\CasesController::class,
             ]);
 
+            // Cases routes
+            Route::get('/cases', [\App\Http\Controllers\Panel\User\CasesController::class, 'index'])->name('cases.index');
+            Route::get('/cases/{case:case_id}', [\App\Http\Controllers\Panel\User\CasesController::class, 'show'])->name('cases.show');
+            Route::post('/cases/{case:case_id}/update-billing', [\App\Http\Controllers\Panel\User\CasesController::class, 'updateBilling'])->name('cases.updateBilling');
+
         });
 
     });
@@ -150,6 +156,12 @@ Route::group(['middleware' => ['auth']], function() {
             Route::post('admin/cpt-codes/bulk-upload', [\App\Http\Controllers\Panel\Admin\CptCodeController::class, 'bulkUpload'])->name('cptcodes.bulk-upload');
             Route::get('/create/cpt-codes',[\App\Http\Controllers\Panel\Admin\CptCodeController::class,'create'])->name('cptcodes.create');
             Route::post('/api/cptcodes', [\App\Http\Controllers\Panel\Admin\CptCodeController::class, 'store'])->name('cptcodes.store');
+
+            Route::post('/cases/{case}/update-billing', [\App\Http\Controllers\Panel\Admin\CasesController::class, 'updateBilling'])->name('newcase.updateBilling');
+
+            // CMS 1500 Form routes
+            Route::post('cases/{case}/save-form', [CasesController::class, 'saveForm'])->name('cases.saveForm');
+            Route::get('cases/{case}/download-form/{form}', [CasesController::class, 'downloadForm'])->name('cases.downloadForm');
         });
 
     });

@@ -1,147 +1,242 @@
 <template>
     <v-inertia-head title="Cases Management" />
 
-    <div class="h-full flex flex-col">
-
-
-        <!-- Section Heading -->
-        <v-content-body class="border-b border-gray-200">
-            <v-section-heading>
-                <template #title>
-                    Cases
-                </template>
-
-                <template #description>
-                    Manage Cases available in the application.
-                </template>
-
-                <template #actions>
-                    <v-button :href="route('panel.admin.cases.create')">
-                        Create Cases
-                    </v-button>
-                </template>
-            </v-section-heading>
-        </v-content-body>
-     <!-- Top Metrics Boxes -->
-     <v-content-body class="border border-gray-200">
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4">
-                <!-- Total Cases -->
-                <div class="bg-white p-6 rounded-lg shadow-md text-center">
-                    <div class="text-lg font-semibold text-gray-700">Total Cases</div>
-                    <div class="text-2xl font-bold text-blue-600">{{ totalCases }}</div>
+    <div class="h-full space-y-6">
+        <!-- Metrics Section -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Cards</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Total Cases</p>
+                            <p class="text-2xl font-semibold text-gray-800">{{ totalCases }}</p>
+                        </div>
+                        <div class="bg-primary-100 p-2 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Pending Cases -->
-                <div class="bg-white p-6 rounded-lg shadow-md text-center">
-                    <div class="text-lg font-semibold text-gray-700">Pending Cases</div>
-                    <div class="text-2xl font-bold text-yellow-600">{{ pendingCases }}</div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Pending Cases</p>
+                            <p class="text-2xl font-semibold text-gray-800">{{ pendingCases }}</p>
+                        </div>
+                        <div class="bg-yellow-100 p-2 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Complete Cases -->
-                <div class="bg-white p-6 rounded-lg shadow-md text-center">
-                    <div class="text-lg font-semibold text-gray-700">Complete Cases</div>
-                    <div class="text-2xl font-bold text-green-600">{{ completeCases }}</div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Complete Cases</p>
+                            <p class="text-2xl font-semibold text-gray-800">{{ completeCases }}</p>
+                        </div>
+                        <div class="bg-green-100 p-2 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Reduction Request Sent -->
-                <div class="bg-white p-6 rounded-lg shadow-md text-center">
-                    <div class="text-lg font-semibold text-gray-700">Reduction Sent</div>
-                    <div class="text-2xl font-bold text-purple-600">{{ reductionRequestSent }}</div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Reduction Requests Sent</p>
+                            <p class="text-2xl font-semibold text-gray-800">{{ reductionRequestsSent }}</p>
+                        </div>
+                        <div class="bg-blue-100 p-2 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Won -->
-                <div class="bg-white p-6 rounded-lg shadow-md text-center">
-                    <div class="text-lg font-semibold text-gray-700">Won</div>
-                    <div class="text-2xl font-bold text-green-600">{{ wonCases }}</div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Won Cases</p>
+                            <p class="text-2xl font-semibold text-gray-800">{{ wonCases }}</p>
+                        </div>
+                        <div class="bg-green-100 p-2 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Lost -->
-                <div class="bg-white p-6 rounded-lg shadow-md text-center">
-                    <div class="text-lg font-semibold text-gray-700">Lost</div>
-                    <div class="text-2xl font-bold text-red-600">{{ lostCases }}</div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Lost Cases</p>
+                            <p class="text-2xl font-semibold text-gray-800">{{ lostCases }}</p>
+                        </div>
+                        <div class="bg-red-100 p-2 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </v-content-body>
-        <!-- Status Filters -->
+        </div>
 
-
-        <!-- Search, Filter, and View Toggles -->
-        <v-content-body class="border-b border-gray-200">
-            <div class="flex justify-between items-center">
-                <!-- List/Grid View Toggle (Left) -->
-                <div class="flex items-center space-x-2">
-                    <button @click="viewMode = 'list'" :class="{'bg-blue-500 text-white': viewMode === 'list'}" class="p-2 rounded-lg hover:bg-blue-100">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        <!-- Cases List Section -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div class="flex items-center gap-4">
+                    <h2 class="text-lg font-semibold text-gray-800">Cases List</h2>
+                    <!-- Create Case Button -->
+                    <v-button
+                        v-if="canCreateCase"
+                        @click="createCase"
+                        color="primary"
+                        class="flex items-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Create Case
+                    </v-button>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <button
+                            @click="viewMode = 'list'"
+                            :class="[
+                                'p-2 rounded-md',
+                                viewMode === 'list'
+                                    ? 'bg-primary-100 text-primary-600'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            ]"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <button @click="viewMode = 'grid'" :class="{'bg-blue-500 text-white': viewMode === 'grid'}" class="p-2 rounded-lg hover:bg-blue-100">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <button
+                            @click="viewMode = 'grid'"
+                            :class="[
+                                'p-2 rounded-md',
+                                viewMode === 'grid'
+                                    ? 'bg-primary-100 text-primary-600'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            ]"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                         </svg>
                     </button>
                 </div>
-
-                <!-- Search and Filter (Right) -->
-                <div class="flex items-center space-x-2">
                     <div class="relative">
-                        <input type="text" v-model="searchQuery" placeholder="Search cases..." class="border p-2 rounded-lg pl-10">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <input
+                            type="text"
+                            v-model="searchQuery"
+                            placeholder="Search cases..."
+                            class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
-                    <button @click="applyFilters" class="p-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <v-button
+                        @click="openFilterModal"
+                        color="secondary"
+                        class="flex items-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                         </svg>
-                    </button>
+                        Filter
+                    </v-button>
                 </div>
             </div>
-        </v-content-body>
 
-        <!-- Cases Cards -->
-        <v-content-body>
-            <div v-if="filteredCases.length > 0" :class="{'grid grid-cols-1 gap-4': viewMode === 'list', 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4': viewMode === 'grid'}">
-                <div v-for="caseItem in filteredCases" :key="caseItem.case_id" class="border p-4 rounded-lg shadow">
-                    <div class="flex justify-between items-center">
-                        <span class="font-semibold">CASE#{{ caseItem.case_id }}</span>
-                        <span :class="`badge ${caseItem.status ? caseItem.status.toLowerCase() : 'pending'}`">
-                            {{ caseItem.status || 'Pending' }}
+            <!-- Cases Grid/List -->
+            <div :class="[
+                viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'
+            ]">
+                <div
+                    v-for="caseItem in filteredCases"
+                    :key="caseItem.case_id"
+                    :class="[
+                        viewMode === 'grid'
+                            ? 'bg-white rounded-lg shadow-sm p-4 border border-gray-200'
+                            : 'bg-white rounded-lg shadow-sm p-4 border border-gray-200 flex items-center justify-between'
+                    ]"
+                >
+                    <!-- Case ID and Status -->
+                    <div :class="[viewMode === 'grid' ? 'mb-4' : 'flex items-center gap-4']">
+                        <div>
+                            <p class="text-sm text-gray-600">Case ID</p>
+                            <p class="font-medium text-gray-800">#{{ caseItem.case_id }}</p>
+                        </div>
+                        <div class="mt-2 flex gap-2">
+                            <span :class="getStatusBadgeClass(caseItem.status)">
+                                {{ getStatusText(caseItem.status) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Client Name -->
+                    <div :class="[viewMode === 'grid' ? 'mb-4' : 'flex-1']">
+                        <p class="text-sm text-gray-600">Client Name</p>
+                        <p class="font-medium text-gray-800">{{ caseItem.patient?.name || 'N/A' }}</p>
+                    </div>
+
+                    <!-- Case Type -->
+                    <div :class="[viewMode === 'grid' ? 'mb-4' : 'flex-1']">
+                        <p class="text-sm text-gray-600">Case Type</p>
+                        <span :class="getBillingTypeBadgeClass(caseItem.billing_type)">
+                            {{ caseItem.billing_type || 'N/A' }}
                         </span>
                     </div>
-                    <div class="mt-2">
-                        <div class="text-sm text-gray-600">Client Name: {{ caseItem.patient_name }}</div>
-                        <div class="text-sm text-gray-600">Type: {{ caseItem.client_type || 'Personal Injury' }}</div>
-                        <div class="text-sm text-gray-600">Next Action: {{ caseItem.next_action || '12/12/2025' }}</div>
-                    </div>
-                    <div class="mt-4 flex justify-between items-center">
-    <v-link :href="route('panel.user.cases.show', { case: caseItem.case_id })" class="bg-info p-2 rounded-lg text-blue-500 flex items-center gap-2">
-        <span class="w-5 h-5">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h7l2 2h5a2 2 0 012 2v14a2 2 0 01-2 2z" />
-            </svg>
-        </span>
-        View Details
-    </v-link>
 
-    <v-button @click="scheduleCase(caseItem.case_id)" class="bg-green-500 text-white flex items-center gap-2">
-        <span class="w-5 h-5">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 4h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2zm3 5h4" />
+                    <!-- Last Update -->
+                    <div :class="[viewMode === 'grid' ? 'mb-4' : 'flex-1']">
+                        <p class="text-sm text-gray-600">Last Update</p>
+                        <p class="font-medium text-gray-800">{{ formatDate(caseItem.updated_at) || 'N/A' }}</p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-2">
+                        <v-button
+                            @click="viewCase(caseItem.case_id)"
+                            color="primary"
+                            class="flex items-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
-        </span>
+                            View
+                        </v-button>
+                        <v-button
+                            @click="scheduleCase(caseItem.case_id)"
+                            color="secondary"
+                            class="flex items-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
         Schedule
     </v-button>
 </div>
-
-
-
                 </div>
             </div>
-            <div v-else class="text-center text-gray-500 py-4">
-                No cases found.
             </div>
-        </v-content-body>
     </div>
 </template>
 
@@ -152,65 +247,151 @@ export default {
     layout: Layout,
     props: {
         cases: {
-            type: Object,
-            required: false,
-            default: () => ({ data: [] }), // Ensure default is an object with data array
+            type: Array,
+            required: true,
+        },
+        userRole: {
+            type: String,
+            required: true,
+        },
+        userId: {
+            type: Number,
+            required: true,
+        },
+        canCreateCase: {
+            type: Boolean,
+            required: true,
         },
     },
     data() {
         return {
+            viewMode: 'list',
             searchQuery: '',
-            viewMode: 'list', // 'list' or 'grid'
-            totalCases: 6, // Example data
-            pendingCases: 6, // Example data
-            completeCases: 0, // Example data
-            reductionRequestSent: 0, // Example data
-            wonCases: 0, // Example data
-            lostCases: 0, // Example data
         };
     },
     computed: {
+        totalCases() {
+            return this.cases.length;
+        },
+        pendingCases() {
+            return this.cases.filter(caseItem => caseItem.status === 'pending').length;
+        },
+        completeCases() {
+            return this.cases.filter(caseItem => caseItem.status === 'complete').length;
+        },
+        reductionRequestsSent() {
+            return this.cases.filter(caseItem => caseItem.status === 'reduction_request_sent').length;
+        },
+        wonCases() {
+            return this.cases.filter(caseItem => caseItem.status === 'won').length;
+        },
+        lostCases() {
+            return this.cases.filter(caseItem => caseItem.status === 'lost').length;
+        },
         filteredCases() {
-            const casesData = this.cases.data || [];
-            return casesData.filter(caseItem => {
-                return caseItem.patient_name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-                       caseItem.case_id.toString().includes(this.searchQuery);
+            return this.cases.filter(caseItem => {
+                const searchLower = this.searchQuery.toLowerCase();
+                return (
+                    caseItem.case_id.toString().includes(searchLower) ||
+                    caseItem.patient?.name?.toLowerCase().includes(searchLower) ||
+                    caseItem.case_type?.toLowerCase().includes(searchLower)
+                );
             });
-        }
+        },
     },
     methods: {
-        selectCaseStatusId(caseStatusId = undefined) {
-            this.$inertia.get(route(route().current()), {
-                ...this.$page.props.query,
-                caseStatusId: caseStatusId,
-                page: undefined,
-            }, {
-                preserveState: true,
-                preserveScroll: true,
-            });
+        getStatusBadgeClass(status) {
+            switch (status) {
+                case 'pending':
+                    return 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-sm';
+                case 'complete':
+                    return 'bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm';
+                case 'reduction_request_sent':
+                    return 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm';
+                case 'won':
+                    return 'bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm';
+                case 'lost':
+                    return 'bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm';
+                default:
+                    return 'bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-sm';
+            }
+        },
+        getStatusText(status) {
+            switch (status) {
+                case 'pending':
+                    return 'Pending';
+                case 'complete':
+                    return 'Complete';
+                case 'reduction_request_sent':
+                    return 'Reduction Request Sent';
+                case 'won':
+                    return 'Won';
+                case 'lost':
+                    return 'Lost';
+                default:
+                    return 'Unknown';
+            }
+        },
+        viewCase(caseId) {
+            this.$inertia.visit(route('panel.user.cases.show', { case: caseId }));
         },
         scheduleCase(caseId) {
-            console.log('Scheduling case:', caseId);
+            // Implement scheduling functionality
+            this.$toast().info('Scheduling functionality coming soon!');
         },
-        applyFilters() {
-            console.log('Applying filters...');
-            // Implement filter logic here
-        }
+        openFilterModal() {
+            // Implement filter modal functionality
+            this.$toast().info('Filter functionality coming soon!');
+        },
+        getBillingTypeBadgeClass(billingType) {
+            switch (billingType) {
+                case 'Insurance':
+                    return 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm';
+                case 'LOP':
+                    return 'bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-sm';
+                default:
+                    return 'bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-sm';
+            }
+        },
+        formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            if (isNaN(date)) return 'Invalid Date';
+            return new Intl.DateTimeFormat('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date);
+        },
+        createCase() {
+            this.$inertia.visit(route('panel.user.cases.create'));
+        },
     },
 };
 </script>
 
 <style scoped>
-.badge {
-    @apply px-2 py-1 rounded-full text-xs font-semibold;
+.bg-white {
+    background-color: white;
 }
-.badge.pending {
-    @apply bg-yellow-200 text-yellow-800;
+.shadow-sm {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
-.badge.active {
-    @apply bg-green-200 text-green-800;
+.rounded-lg {
+    border-radius: 0.5rem;
 }
-.badge.closed {
-    @apply bg-red-200 text-red-800;
+.p-4 {
+    padding: 1rem;
+}
+.mb-4 {
+    margin-bottom: 1rem;
+}
+.gap-4 {
+    gap: 1rem;
+}
+.bg-gray-50 {
+    background-color: #f9fafb;
 }
 </style>

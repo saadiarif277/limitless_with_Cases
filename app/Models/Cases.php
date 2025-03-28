@@ -30,19 +30,36 @@ class Cases extends Model
         'closed_at',
     ];
 
-    public function patient()
-    {
-        return $this->belongsTo(User::class, 'patient_id', 'user_id');
-    }
-
-    public function attorney()
-    {
-        return $this->belongsTo(User::class, 'attorney_id', 'user_id');
-    }
-
+    /**
+     * Get the piloting physician associated with the case.
+     */
     public function pilotingPhysician()
     {
-        return $this->belongsTo(User::class, 'piloting_physician_id', 'user_id');
+        return $this->belongsTo(User::class, 'piloting_physician_id');
+    }
+
+    /**
+     * Get the doctor associated with the case.
+     */
+    public function doctor()
+    {
+        return $this->belongsTo(User::class, 'doctor_id');
+    }
+
+    /**
+     * Get the patient associated with the case.
+     */
+    public function patient()
+    {
+        return $this->belongsTo(User::class, 'patient_id');
+    }
+
+    /**
+     * Get the attorney associated with the case.
+     */
+    public function attorney()
+    {
+        return $this->belongsTo(User::class, 'attorney_id');
     }
 
     public function primaryReferral()
@@ -79,4 +96,5 @@ class Cases extends Model
 
         return $allSettled ? 'Complete' : 'Pending';
     }
+
 }
