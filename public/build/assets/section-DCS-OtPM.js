@@ -1,1 +1,0 @@
-import{_ as e}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{o as t,c as s,h as n}from"./app-DsmlTcIo.js";const c={name:"SectionComponent"},r={class:"v-section grid grid-cols-1"};function a(o,i,d,p,_,l){return t(),s("div",r,[n(o.$slots,"default")])}const u=e(c,[["render",a]]);export{u as default};
