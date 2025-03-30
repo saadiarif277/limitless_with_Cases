@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Panel\User;
 
+use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DocumentCategoryResource;
 use App\Http\Resources\MedicalSpecialtyResource;
@@ -38,6 +39,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Attorney;
 use App\Models\Doctor;
 use App\Models\Patient;
+use App\Http\Resources\CptCodeResource;
 
 class CasesController extends Controller
 {
@@ -131,9 +133,13 @@ class CasesController extends Controller
             );
 
             // Get CPT codes
-            $allCptCodes = CptCode::query()
-                ->orderBy('code')
-                ->get();
+            $allCptCodes = CptCodeResource::collection(
+                CptCode::query()
+                    ->orderBy('code')
+                    ->get()
+            );
+
+
 
             // Get referrals based on user role
             $referrals = ReferralResource::collection(
@@ -158,9 +164,8 @@ class CasesController extends Controller
                         ->whereHas('roles', function($query) {
                             $query->where('name', 'Doctor');
                         })
-                        ->whereHas('clinics', function($query) use ($stateId) {
-                            $query->where('clinics.state_id', $stateId);
-                        })
+                        ->Orwhere('law_firm_id', Auth::user()->law_firm_id)
+                        ->Orwhere('state_id', Auth::user()->state_id)
                         ->orderBy('name')
                         ->get()
                 );
@@ -180,9 +185,7 @@ class CasesController extends Controller
                         ->whereHas('roles', function($query) {
                             $query->where('name', 'Attorney');
                         })
-                        ->whereHas('lawFirm', function($query) use ($stateId) {
-                            $query->where('law_firms.state_id', $stateId);
-                        })
+                        ->where('state_id', $stateId)
                         ->orderBy('name')
                         ->get()
                 );
@@ -206,7 +209,7 @@ class CasesController extends Controller
                 'allCptCodes' => $allCptCodes,
                 'referrals' => $referrals,
                 'userRole' => $userRole,
-                'userId' => $user->user_id,
+                'userId' => $user->id,
                 'listRoute' => 'panel.user.cases.index',
                 'storeRoute' => 'panel.user.cases.store',
                 'error' => null
@@ -222,7 +225,7 @@ class CasesController extends Controller
                 'allCptCodes' => [],
                 'referrals' => [],
                 'userRole' => $userRole ?? '',
-                'userId' => $user->user_id ?? 0,
+                'userId' => $user->id ?? 0,
                 'listRoute' => 'panel.user.cases.index',
                 'storeRoute' => 'panel.user.cases.store'
             ]);
@@ -233,54 +236,110 @@ class CasesController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-{
+    {
         try {
             $user = Auth::user();
             $userRole = $user->roles->first()->name;
 
-    // Validate the request
-            $validated = $request->validate([
-        'patient_id' => 'required|exists:users,id',
-        'attorney_id' => 'nullable|exists:users,id',
-        'piloting_physician_id' => 'nullable|exists:users,id',
-        'policy_limit_info' => 'nullable|string',
-        'primary_referral_id' => 'required|exists:referrals,referral_id',
+            // Base validation rules for all roles
+            $baseRules = [
+                'state_id' => 'required|exists:states,state_id',
+                'patient_id' => 'required|exists:users,user_id',
+                'type_of_accident' => 'required|string',
+                'primary_referral_id' => 'nullable|exists:referrals,referral_id',
                 'referral_ids' => 'nullable|array',
                 'referral_ids.*' => 'exists:referrals,referral_id',
-        'icd10_codes' => 'nullable|string',
-        'cpt_codes' => 'nullable|string',
-        'service_billed' => 'required|numeric',
-        'billing_type' => 'nullable|string',
-        'is_cms1500_generated' => 'required|boolean',
-        'case_won' => 'nullable|boolean',
-        'outcome' => 'nullable|string',
-        'reduction_accepted' => 'nullable|boolean',
-        'is_closed' => 'required|boolean',
-        'closed_at' => 'nullable|date',
-    ]);
+            ];
+
+            // Role-specific validation rules
+            $roleRules = [];
+            if ($userRole === 'Attorney') {
+                $roleRules = [
+                    'piloting_physician_id' => 'required|exists:users,user_id',
+                    'policy_limit' => 'required|numeric|min:0',
+                    'pip_coverage' => 'required|numeric|min:0',
+                    'commercial_case' => 'required|boolean',
+                ];
+            } else if ($userRole === 'Doctor') {
+                $roleRules = [
+                    'attorney_id' => 'required|exists:users,user_id',
+                    'billing_type' => 'required|in:Insurance,LOP',
+                    'service_billed' => 'required|numeric|min:0',
+                    'cpt_codes' => 'nullable',
+                    'cpt_codes.*.code' => 'required_with:cpt_codes|string',
+                    'cpt_codes.*.value' => 'required_with:cpt_codes|numeric|min:0',
+                ];
+            }
+
+            // Merge the base and role-specific validation rules
+            $validator = Validator::make($request->all(), array_merge($baseRules, $roleRules));
+
+            if ($validator->fails()) {
+                return redirect()
+                    ->route('panel.user.cases.create')
+                    ->withErrors($validator)
+                    ->withInput();
+            }
+
+            $validatedData = $validator->validated();
 
             // Set the appropriate IDs based on user role
             if ($userRole === 'Attorney') {
-                $validated['attorney_id'] = $user->id;
-            } elseif ($userRole === 'Doctor') {
-                $validated['piloting_physician_id'] = $user->id;
+                $validatedData['attorney_id'] = $user->user_id;
+                // Encode policy limit info into JSON
+                $validatedData['policy_limit_info'] = json_encode([
+                    'policy_limit' => $request->input('policy_limit'),
+                    'pip_coverage' => $request->input('pip_coverage'),
+                    'commercial_case' => $request->input('commercial_case', false)
+                ]);
+            } else if ($userRole === 'Doctor') {
+                $validatedData['piloting_physician_id'] = $user->user_id;
+
+                // Handle CPT codes
+                if ($request->has('cpt_codes') && is_array($request->input('cpt_codes'))) {
+                    // Filter out any empty CPT codes
+                    $filteredCptCodes = array_filter($request->input('cpt_codes'), function($cpt) {
+                        return !empty($cpt['code']) && !empty($cpt['value']);
+                    });
+
+                    if (!empty($filteredCptCodes)) {
+                        $validatedData['cpt_codes'] = json_encode($filteredCptCodes);
+                    }
+                }
             }
 
-    // Create the case
-            $case = Cases::create($validated);
+            // Convert referral_ids array to comma-separated string
+            if (isset($validatedData['referral_ids']) && is_array($validatedData['referral_ids'])) {
+                // Ensure the first referral is set as primary
+                if (!empty($validatedData['referral_ids'])) {
+                    $validatedData['primary_referral_id'] = $validatedData['referral_ids'][0];
+                }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Case created successfully',
-                'case' => $case
-            ], 201);
+                // Convert to comma-separated string
+                $validatedData['referral_ids'] = implode(',', $validatedData['referral_ids']);
+            } else {
+                $validatedData['referral_ids'] = null;
+            }
+
+            // Set default values for optional fields
+            $validatedData['is_closed'] = $request->input('is_closed', false);
+            $validatedData['case_won'] = $request->input('case_won', false);
+            $validatedData['reduction_accepted'] = $request->input('reduction_accepted', false);
+
+            // Create the case
+            $case = Cases::create($validatedData);
+
+            return redirect()
+                ->route('panel.user.cases.create')
+                ->with('success', 'Case created successfully!');
+
         } catch (\Exception $e) {
-            Log::error('Error in store method: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create case. Please try again.',
-                'error' => $e->getMessage()
-            ], 500);
+            Log::error('Error creating case: ' . $e->getMessage());
+
+            return redirect()
+                ->route('panel.user.cases.create')
+                ->with('error', 'Failed to create case. Please try again.')
+                ->withInput();
         }
     }
 
@@ -311,16 +370,17 @@ class CasesController extends Controller
         $caseData['policy_limit_info'] = json_decode($case->policy_limit_info, true);
 
         // Process referrals to include reduction request details
-        $referrals->each(function ($referral) {
-            if ($referral->reductionRequests) {
-                $referral->reductionRequests->each(function ($reductionRequest) {
-                    // Add a link to the file if it exists
-                    if ($reductionRequest->file_path) {
-                        $reductionRequest->file_link = asset('storage/' . $reductionRequest->file_path);
+        if (!empty($referrals)) {
+            foreach ($referrals as &$referral) {
+                if (isset($referral['reduction_requests']) && !empty($referral['reduction_requests'])) {
+                    foreach ($referral['reduction_requests'] as &$reductionRequest) {
+                        if (isset($reductionRequest['file_path']) && $reductionRequest['file_path']) {
+                            $reductionRequest['file_link'] = asset('storage/' . $reductionRequest['file_path']);
+                        }
                     }
-                });
+                }
             }
-        });
+        }
 
         return Inertia::render('panel/user/cases/case-view', [
             'caseDetails' => $caseData,

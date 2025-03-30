@@ -1,6 +1,19 @@
 <template>
     <v-form class="h-full" @submit.prevent="submitForm">
         <div class="h-full divide-y divide-gray-200 space-y-12">
+
+
+
+            <!-- Success Message -->
+            <div v-if="$page?.props?.flash?.success" class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative" role="alert">
+                <span class="block sm:inline">{{ $page.props.flash.success }}</span>
+            </div>
+
+            <!-- Error Message -->
+            <div v-if="$page?.props?.flash?.error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <span class="block sm:inline">{{ $page.props.flash.error }}</span>
+            </div>
+
             <!-- Case Details Section -->
             <div>
                 <v-content-body class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -8,11 +21,12 @@
                     <v-form-group>
                         <v-form-label>Case State</v-form-label>
                         <v-form-select
-                            :options="stateOptions"
+                            :options="(states).data.map((state) => ({ label: state.name, value: state.state_id }))"
                             :error="form.errors.state_id"
                             :disabled="form.processing"
                             :required="true"
                             v-model="form.state_id"
+
                         />
                         <v-form-error v-if="form.errors.state_id">{{ form.errors.state_id }}</v-form-error>
                     </v-form-group>
@@ -26,6 +40,8 @@
                             :disabled="form.processing"
                             :required="true"
                             v-model="form.patient_id"
+                            class="w-full"
+                            required
                         />
                         <v-form-error v-if="form.errors.patient_id">{{ form.errors.patient_id }}</v-form-error>
                     </v-form-group>
@@ -44,6 +60,7 @@
                             :disabled="form.processing"
                             :required="true"
                             v-model="form.type_of_accident"
+                            class="w-full"
                         />
                         <v-form-error v-if="form.errors.type_of_accident">{{ form.errors.type_of_accident }}</v-form-error>
                     </v-form-group>
@@ -64,14 +81,17 @@
                                 :disabled="form.processing"
                                 :required="true"
                                 v-model="form.attorney_id"
+                                class="w-full"
+                                required
                             />
                             <v-form-error v-if="form.errors.attorney_id">{{ form.errors.attorney_id }}</v-form-error>
                         </v-form-group>
 
-                        <!-- Billing Information -->
+                        <!-- Billing Info (for Doctors) -->
                         <v-form-group>
                             <v-form-label>Billing Type</v-form-label>
                             <v-form-select
+                                v-model="form.billing_type"
                                 :options="[
                                     { label: 'Insurance', value: 'Insurance' },
                                     { label: 'LOP', value: 'LOP' }
@@ -79,58 +99,22 @@
                                 :error="form.errors.billing_type"
                                 :disabled="form.processing"
                                 :required="true"
-                                v-model="form.billing_type"
+                                class="w-full"
                             />
                             <v-form-error v-if="form.errors.billing_type">{{ form.errors.billing_type }}</v-form-error>
                         </v-form-group>
 
-                        <!-- Service Billed -->
                         <v-form-group>
                             <v-form-label>Service Billed</v-form-label>
                             <v-form-input
                                 type="number"
+                                v-model="form.service_billed"
                                 :error="form.errors.service_billed"
                                 :disabled="form.processing"
                                 :required="true"
-                                v-model="form.service_billed"
+                                class="w-full"
                             />
                             <v-form-error v-if="form.errors.service_billed">{{ form.errors.service_billed }}</v-form-error>
-                        </v-form-group>
-
-                        <!-- CPT Codes -->
-                        <v-form-group class="col-span-full">
-                            <v-form-label>CPT Codes</v-form-label>
-                            <div v-for="(cpt, index) in selectedCptCodes" :key="index" class="flex gap-2 mb-2">
-                                <v-form-select
-                                    :options="cptCodeOptions"
-                                    :error="form.errors[`cpt_codes.${index}.code`]"
-                                    :disabled="form.processing"
-                                    class="flex-1"
-                                    v-model="cpt.code"
-                                />
-                                <v-form-input
-                                    type="number"
-                                    :error="form.errors[`cpt_codes.${index}.value`]"
-                                    :disabled="form.processing"
-                                    placeholder="Value"
-                                    class="flex-1"
-                                    v-model="cpt.value"
-                                />
-                                <v-button
-                                    @click="removeCptCode(index)"
-                                    color="red"
-                                    class="self-end"
-                                >
-                                    Remove
-                                </v-button>
-                            </div>
-                            <v-button
-                                @click="addCptCode"
-                                color="primary"
-                                class="mt-4"
-                            >
-                                Add CPT Code
-                            </v-button>
                         </v-form-group>
                     </template>
 
@@ -145,6 +129,7 @@
                                 :disabled="form.processing"
                                 :required="true"
                                 v-model="form.piloting_physician_id"
+                                class="w-full"
                             />
                             <v-form-error v-if="form.errors.piloting_physician_id">{{ form.errors.piloting_physician_id }}</v-form-error>
                         </v-form-group>
@@ -158,6 +143,7 @@
                                 :disabled="form.processing"
                                 :required="true"
                                 v-model="form.policy_limit"
+                                class="w-full"
                             />
                             <v-form-error v-if="form.errors.policy_limit">{{ form.errors.policy_limit }}</v-form-error>
                         </v-form-group>
@@ -171,6 +157,7 @@
                                 :disabled="form.processing"
                                 :required="true"
                                 v-model="form.pip_coverage"
+                                class="w-full"
                             />
                             <v-form-error v-if="form.errors.pip_coverage">{{ form.errors.pip_coverage }}</v-form-error>
                         </v-form-group>
@@ -189,6 +176,68 @@
                 </v-content-body>
             </div>
 
+            <!-- CPT Codes Section (only show for Insurance billing type) -->
+            <div v-if="userRole === 'Doctor' && form.billing_type === 'Insurance'">
+                <v-content-body>
+                    <v-section-heading>
+                        <template #title>CPT Codes</template>
+                        <template #description>Add CPT codes for billing</template>
+                    </v-section-heading>
+                    <div class="mt-6">
+                        <!-- Display a message if no CPT codes are added -->
+                        <div
+                            v-if="form.cpt_codes.length === 0"
+                            class="text-gray-500 mb-4"
+                        >
+                            No CPT codes added yet.
+                        </div>
+                        <!-- Dynamic CPT Code Inputs -->
+                        <div
+                            v-for="(cpt, index) in form.cpt_codes"
+                            :key="index"
+                            class="flex gap-4 mb-4"
+                        >
+                            <!-- CPT Code Selection -->
+                            <v-form-select
+                                :options="cptCodeOptions"
+                                v-model="cpt.code"
+                                :error="form.errors[`cpt_codes.${index}.code`]"
+                                :disabled="form.processing"
+                                class="flex-1"
+                                placeholder="Select CPT Code"
+                            />
+                            <!-- CPT Code Value Input -->
+                            <v-form-input
+                                type="number"
+                                v-model="cpt.value"
+                                :error="form.errors[`cpt_codes.${index}.value`]"
+                                :disabled="form.processing"
+                                placeholder="Value"
+                                class="flex-1"
+                            />
+                            <!-- Remove Button -->
+                            <v-button
+                                type="button"
+                                @click.prevent="removeCptCode(index)"
+                                color="red"
+                                class="self-end"
+                            >
+                                Remove
+                            </v-button>
+                        </div>
+                        <!-- Add CPT Code Button -->
+                        <v-button
+                            type="button"
+                            @click.prevent="addCptCode"
+                            color="primary"
+                            class="mt-4"
+                        >
+                            Add CPT Code
+                        </v-button>
+                    </div>
+                </v-content-body>
+            </div>
+
             <!-- Referrals Section -->
             <div>
                 <v-content-body class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -196,11 +245,12 @@
                     <v-form-group>
                         <v-form-label>Referrals</v-form-label>
                         <v-form-select
-                            :options="referralOptions"
+                            :options="referrals.data.map((referral) => ({ label: `Referral #${referral.referral_id} - ${referral.patient_user.name}`, value: referral.referral_id }))"
                             :error="form.errors.referral_ids"
                             :disabled="form.processing"
                             :multiple="true"
-                            v-model="selectedReferrals"
+                            v-model="form.referral_ids"
+                            class="w-full"
                         />
                         <v-form-error v-if="form.errors.referral_ids">{{ form.errors.referral_ids }}</v-form-error>
                     </v-form-group>
@@ -235,7 +285,7 @@ export default {
     data() {
         return {
             form: useForm({
-                state_id: this.$page.props.auth.user.state_id || null,
+                state_id: 0,
                 patient_id: null,
                 attorney_id: this.userRole === 'Doctor' ? null : (this.userId || 0),
                 piloting_physician_id: this.userRole === 'Attorney' ? null : (this.userId || 0),
@@ -247,10 +297,9 @@ export default {
                 type_of_accident: "",
                 billing_type: this.userRole === 'Doctor' ? "Insurance" : null,
                 service_billed: this.userRole === 'Doctor' ? "" : null,
-                cpt_codes: this.userRole === 'Doctor' ? JSON.stringify([]) : null,
+                cpt_codes: [],
                 referral_ids: [],
                 primary_referral_id: null,
-                is_cms1500_generated: false,
                 case_won: false,
                 outcome: "",
                 reduction_accepted: false,
@@ -261,7 +310,7 @@ export default {
                 pip_coverage: this.userRole === 'Attorney' ? "" : null,
                 commercial_case: this.userRole === 'Attorney' ? false : null
             }),
-            selectedCptCodes: this.userRole === 'Doctor' ? [] : null,
+            selectedCptCodes: [],
             selectedReferrals: []
         };
     },
@@ -291,9 +340,12 @@ export default {
             }));
         },
         cptCodeOptions() {
-            return (this.allCptCodes.data || []).map(c => ({
-                label: `${c.code} - ${c.description}`,
-                value: c.code
+            if (!this.allCptCodes?.data) return [];
+            return this.allCptCodes.data.map(code => ({
+                label: `${code.code} - ${code.description}`,
+                value: code.code,
+                description: code.description,
+                default_value: code.default_value
             }));
         },
         referralOptions() {
@@ -305,23 +357,24 @@ export default {
     },
     methods: {
         addCptCode() {
-            if (this.userRole === 'Doctor') {
-                this.selectedCptCodes.push({
-                    code: "",
-                    value: ""
+            if (this.userRole === 'Doctor' && this.form.billing_type === 'Insurance') {
+                this.form.cpt_codes.push({
+                    code: '',
+                    value: '',
+                    description: ''
                 });
-                this.updateCptCodes();
             }
         },
         removeCptCode(index) {
             if (this.userRole === 'Doctor') {
-                this.selectedCptCodes.splice(index, 1);
-                this.updateCptCodes();
+                this.form.cpt_codes.splice(index, 1);
             }
         },
         updateCptCodes() {
-            if (this.userRole === 'Doctor') {
-                this.form.cpt_codes = JSON.stringify(this.selectedCptCodes);
+            if (this.userRole === 'Doctor' && this.form.billing_type === 'Insurance') {
+                // Filter out any empty CPT codes
+                const validCptCodes = this.form.cpt_codes.filter(cpt => cpt.code && cpt.value);
+                this.form.cpt_codes = validCptCodes;
             }
         },
         submitForm() {
@@ -340,6 +393,17 @@ export default {
                 });
             }
 
+            // Handle CPT codes based on billing type
+            if (this.userRole === 'Doctor') {
+                if (this.form.billing_type === 'Insurance') {
+                    // Filter out any empty CPT codes before submitting
+                    const validCptCodes = this.form.cpt_codes.filter(cpt => cpt.code && cpt.value);
+                    this.form.cpt_codes =validCptCodes;
+                } else {
+                    this.form.cpt_codes = null;
+                }
+            }
+
             // Remove null fields based on role
             if (this.userRole === 'Doctor') {
                 delete this.form.policy_limit;
@@ -352,8 +416,9 @@ export default {
             }
 
             this.form.post(route(this.storeRoute), {
+                preserveScroll: true,
                 onSuccess: () => {
-                    this.$inertia.visit(route(this.listRoute));
+                    // Don't redirect, let the controller handle it
                 }
             });
         }
@@ -362,7 +427,7 @@ export default {
         selectedCptCodes: {
             deep: true,
             handler() {
-                if (this.userRole === 'Doctor') {
+                if (this.userRole === 'Doctor' && this.form.billing_type === 'Insurance') {
                     this.updateCptCodes();
                 }
             }
@@ -375,6 +440,13 @@ export default {
                 } else {
                     this.form.primary_referral_id = null;
                     this.form.referral_ids = [];
+                }
+            }
+        },
+        'form.billing_type': {
+            handler(newValue) {
+                if (newValue === 'LOP') {
+                    this.form.cpt_codes = [];
                 }
             }
         }

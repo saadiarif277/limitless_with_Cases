@@ -183,11 +183,7 @@
                             <p class="text-sm text-gray-600">Case ID</p>
                             <p class="font-medium text-gray-800">#{{ caseItem.case_id }}</p>
                         </div>
-                        <div class="mt-2 flex gap-2">
-                            <span :class="getStatusBadgeClass(caseItem.status)">
-                                {{ getStatusText(caseItem.status) }}
-                            </span>
-                        </div>
+
                     </div>
 
                     <!-- Client Name -->
