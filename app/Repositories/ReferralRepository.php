@@ -12,7 +12,7 @@ use App\Http\Requests\UpdateReferralRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class ReferralRepository
 {
@@ -40,7 +40,7 @@ class ReferralRepository
             /**
              * Filter by the search query, if available.
              */
-            ->when(!blank($request) && $request->filled('searchQuery'), function ($query) use ($request) {
+            ->when($request && $request->has('searchQuery') && $request->get('searchQuery'), function ($query) use ($request) {
                 $searchTerm = strtolower($request->get('searchQuery'));
                 $query->where(function ($subquery) use ($searchTerm) {
                     $subquery
@@ -58,7 +58,7 @@ class ReferralRepository
             /**
              * Filter results by the selected referral status ID, if available.
              */
-            ->when(!blank($request) && $request->filled('referralStatusId'), function ($query) use ($request) {
+            ->when($request && $request->has('referralStatusId') && $request->get('referralStatusId'), function ($query) use ($request) {
                 $query->where('referrals.referral_status_id', $request->get('referralStatusId'));
             })
 
@@ -90,7 +90,7 @@ class ReferralRepository
 
         try {
             $currentUser = auth()->user();
-            
+
             /**
              * Prepare the payload for the referral.
              */
@@ -170,7 +170,7 @@ class ReferralRepository
              */
             $referralReasonIds = $request->validated()['referral_reason_ids'];
             $referral->referralReasons()->sync($referralReasonIds);
-        
+
             DB::commit();
             return $referral->fresh();
         } catch (\Exception $e) {
@@ -206,7 +206,7 @@ class ReferralRepository
              */
             $documents = $request->validated()['documents'];
             $this->createDocuments($documents, $referral);
-        
+
             DB::commit();
             return $referral->fresh();
         } catch (\Exception $e) {
@@ -276,7 +276,7 @@ class ReferralRepository
         if ($attorneyUser->lawFirm) {
             return $attorneyUser->lawFirm;
         }
-        
+
         $lawFirmData = $request->validated()['attorney']['law_firm'];
 
         $lawFirm = LawFirm::updateOrCreate([
@@ -306,7 +306,7 @@ class ReferralRepository
         if ($request->filled('clinic_id')) {
             return Clinic::findOrFail($request->validated()['clinic_id']);
         }
-        
+
         $clinicData = $request->validated()['doctor']['clinic'];
 
         $clinic = Clinic::updateOrCreate([

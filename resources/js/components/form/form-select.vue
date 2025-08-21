@@ -50,13 +50,13 @@
             <div class="flex flex-wrap gap-2 mt-4">
                 <template v-for="(selectedOption, selectedOptionIndex) in selectedOptions" :key="'selectedOption_' + selectedOptionIndex">
                     <a href="#"  @click.stop="value.splice(value.indexOf(selectedOption.value), 1)">
-                        <v-badge class="hover:bg-gray-300 cursor-pointer">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-gray-300 cursor-pointer">
                             {{ selectedOption.label }}
 
                             <span class="text-red-500 ml-1 text-base">
                                 &times;
                             </span>
-                        </v-badge>
+                        </span>
                     </a>
                 </template>
             </div>

@@ -41,24 +41,26 @@ class ReductionRequestController extends Controller
         'data' => $reductionRequest,
     ], 201);
 }
-public function update(Request $request, $id)
-{
-    $request->validate([
-        'doctor_decision' => 'nullable|in:accepted,rejected,pending', // Validate doctor's decision
-        'counter_offer' => 'nullable|numeric|min:0', // Validate counter offer
-    ]);
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'doctor_decision' => 'nullable|in:accepted,rejected,pending', // Validate doctor's decision
+            'counter_offer' => 'nullable|numeric|min:0', // Validate counter offer
+            'notes' => 'nullable|string|max:1000', // Validate notes
+        ]);
 
-    $reductionRequest = ReductionRequest::findOrFail($id);
+        $reductionRequest = ReductionRequest::findOrFail($id);
 
-    // Update the doctor's decision and counter offer
-    $reductionRequest->update([
-        'doctor_decision' => $request->doctor_decision ?? $reductionRequest->doctor_decision,
-        'counter_offer' => $request->counter_offer ?? $reductionRequest->counter_offer,
-    ]);
+        // Update the doctor's decision, counter offer, and notes
+        $reductionRequest->update([
+            'doctor_decision' => $request->doctor_decision ?? $reductionRequest->doctor_decision,
+            'counter_offer' => $request->counter_offer ?? $reductionRequest->counter_offer,
+            'notes' => $request->notes ?? $reductionRequest->notes,
+        ]);
 
-    return response()->json([
-        'message' => 'Reduction request updated successfully',
-        'data' => $reductionRequest,
-    ]);
-}
+        return response()->json([
+            'message' => 'Reduction request updated successfully',
+            'data' => $reductionRequest,
+        ]);
+    }
 }

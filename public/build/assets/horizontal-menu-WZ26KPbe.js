@@ -1,1 +1,0 @@
-import{_ as e}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{o as t,c as n,h as r}from"./app-Bi_K_mTy.js";const s={name:"HorizontalMenuComponent"},a={class:"v-horizontal-menu"};function c(o,l,i,p,_,m){return t(),n("div",a,[r(o.$slots,"default")])}const u=e(s,[["render",c]]);export{u as default};

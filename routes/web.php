@@ -41,13 +41,12 @@ Route::group(['middleware' => ['auth']], function() {
     |
     */
 
+    // General reduction request routes (outside panel.user group)
     Route::post('/reduction-requests', [ReductionRequestController::class, 'store']);
-
-    // Update a reduction request (e.g., doctor's decision or counter offer)
     Route::put('/reduction-requests/{id}', [ReductionRequestController::class, 'update']);
-
-    // Get all reduction requests for a case
     Route::get('/cases/{caseId}/reduction-requests', [ReductionRequestController::class, 'index']);
+
+
 
     Route::group(['middleware' => ['panel.redirect.to.admin']], function() {
 
@@ -92,16 +91,36 @@ Route::group(['middleware' => ['auth']], function() {
 
         Route::group(['as' => 'panel.user.'], function () {
 
+            // Reduction request routes (must come BEFORE referrals resource to avoid conflicts)
+            Route::get('/referrals/reduction-requests', [\App\Http\Controllers\Panel\User\ReferralController::class, 'reductionRequests'])
+                ->name('referrals.reduction-requests');
+            Route::put('/referrals/reduction-requests/{reductionRequest}/decision', [\App\Http\Controllers\Panel\User\ReferralController::class, 'updateReductionDecision'])
+                ->name('referrals.update-reduction-decision');
+
+            // AJAX endpoint for getting filtered data by state
+            Route::get('/referrals/data-by-state', [\App\Http\Controllers\Panel\User\ReferralController::class, 'getDataByState'])
+                ->name('referrals.data-by-state');
+
             Route::resources([
                 'appointments' => \App\Http\Controllers\Panel\User\AppointmentController::class,
                 'referrals' =>  \App\Http\Controllers\Panel\User\ReferralController::class,
                 'cases' =>  \App\Http\Controllers\Panel\User\CasesController::class,
             ]);
 
-            // Cases routes
-            Route::get('/cases', [\App\Http\Controllers\Panel\User\CasesController::class, 'index'])->name('cases.index');
-            Route::get('/cases/{case:case_id}', [\App\Http\Controllers\Panel\User\CasesController::class, 'show'])->name('cases.show');
-            Route::post('/cases/{case:case_id}/update-billing', [\App\Http\Controllers\Panel\User\CasesController::class, 'updateBilling'])->name('cases.updateBilling');
+            // Reduction request routes for cases
+            Route::post('/cases/{case:case_id}/reduction-requests', [\App\Http\Controllers\Panel\User\CasesController::class, 'createReductionRequest'])
+                ->name('cases.reduction-requests.create');
+            Route::put('/cases/{case:case_id}/reduction-requests/{reductionRequest}/decision', [\App\Http\Controllers\Panel\User\CasesController::class, 'updateReductionDecision'])
+                ->name('cases.reduction-requests.update-decision');
+
+            // Additional case routes
+            Route::put('/cases/{case:case_id}/update-billing', [\App\Http\Controllers\Panel\User\CasesController::class, 'updateBilling'])->name('cases.updateBilling');
+
+            // Funding routes
+            Route::get('/funding/request', [\App\Http\Controllers\Panel\User\FundingController::class, 'request'])
+                ->name('funding.request');
+            Route::post('/funding/request', [\App\Http\Controllers\Panel\User\FundingController::class, 'store'])
+                ->name('funding.store');
 
         });
 
@@ -158,6 +177,9 @@ Route::group(['middleware' => ['auth']], function() {
             Route::post('/api/cptcodes', [\App\Http\Controllers\Panel\Admin\CptCodeController::class, 'store'])->name('cptcodes.store');
 
             Route::post('/cases/{case}/update-billing', [\App\Http\Controllers\Panel\Admin\CasesController::class, 'updateBilling'])->name('newcase.updateBilling');
+
+            // LOP Information save route
+            Route::post('/cases/{case}/save-lop-information', [\App\Http\Controllers\Panel\Admin\CasesController::class, 'saveLopInformation'])->name('cases.saveLopInformation');
 
             // CMS 1500 Form routes
             Route::post('cases/{case}/save-form', [CasesController::class, 'saveForm'])->name('cases.saveForm');

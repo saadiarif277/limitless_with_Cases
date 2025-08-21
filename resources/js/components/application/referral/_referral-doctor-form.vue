@@ -84,7 +84,10 @@
                     <v-form-group>
                         <v-form-label><span class="text-primary-500 italic">Doctor</span> Medical Specialty</v-form-label>
                         <v-form-select
-                            :options="medicalSpecialties.data.map((medicalSpecialty) => ({ label: medicalSpecialty.name, value: medicalSpecialty.medical_specialty_id }))"
+                            :options="[
+                                { label: 'Select Medical Specialty', value: null },
+                                ...medicalSpecialties.data.map((medicalSpecialty) => ({ label: medicalSpecialty.name, value: medicalSpecialty.medical_specialty_id }))
+                            ]"
                             :error="form.errors['doctor.medical_specialty_id']"
                             v-model="form.doctor.medical_specialty_id"
                         />
@@ -160,11 +163,6 @@
 <script>
 export default {
     props: {
-        attorneys: {
-            type: Object,
-            required: true,
-            default: () => {},
-        },
         doctors: {
             type: Object,
             required: true,
@@ -182,7 +180,7 @@ export default {
         },
         patients: {
             type: Object,
-            required: true,
+            required: false,
             default: () => {},
         },
         referral: {
@@ -214,6 +212,16 @@ export default {
 
             return this.doctors.data.find((doctor) => ((doctor.user_id) == (this.form.doctor.user_id)));
         },
+        // Debug computed properties
+        doctorsCount() {
+            return this.doctors?.data?.length || 0;
+        },
+        doctorsData() {
+            return this.doctors?.data || [];
+        }
+    },
+    mounted() {
+        // Component is ready
     },
     watch: {
         dataStrategy: {
@@ -221,9 +229,39 @@ export default {
                 if (value === "new") {
                     this.form.doctor.user_id = null;
                     this.form.doctor.clinic_id = null;
+                    this.form.doctor.medical_specialty_id = null;
                 }
             },
         },
+        'form.doctor.user_id': {
+            handler(newValue) {
+                if (newValue && this.dataStrategy === 'existing') {
+                    // When an existing doctor is selected, populate the form with their data
+                    const selectedDoctor = this.doctors.data.find(doctor => doctor.user_id == newValue);
+                    if (selectedDoctor) {
+                        this.form.doctor.name = selectedDoctor.name;
+                        this.form.doctor.email = selectedDoctor.email;
+                        this.form.doctor.phone_number = selectedDoctor.phone_number || "";
+                        this.form.doctor.medical_specialty_id = selectedDoctor.medical_specialty_id || null;
+
+                        // Populate clinic information if available
+                        if (selectedDoctor.clinics && selectedDoctor.clinics.length > 0) {
+                            const clinic = selectedDoctor.clinics[0];
+                            this.form.doctor.clinic.clinic_id = clinic.clinic_id || "";
+                            this.form.doctor.clinic.name = clinic.name || "";
+                            this.form.doctor.clinic.email = clinic.email || "";
+                            this.form.doctor.clinic.phone_number = clinic.phone_number || "";
+                            this.form.doctor.clinic.address_line_1 = clinic.address_line_1 || "";
+                            this.form.doctor.clinic.address_line_2 = clinic.address_line_2 || "";
+                            this.form.doctor.clinic.city = clinic.city || "";
+                            this.form.doctor.clinic.state_id = clinic.state_id || "";
+                            this.form.doctor.clinic.zip_code = clinic.zip_code || "";
+                        }
+                    }
+                }
+            },
+            immediate: true
+        }
     },
 };
 </script>

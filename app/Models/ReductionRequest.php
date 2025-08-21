@@ -20,6 +20,7 @@ class ReductionRequest extends Model
         'referral_status', // Status of the referral
         'doctor_decision', // Doctor's decision (accepted, rejected, pending)
         'counter_offer', // Doctor's counter offer
+        'notes', // Doctor's notes
     ];
 
     // Relationships

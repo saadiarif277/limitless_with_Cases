@@ -181,11 +181,6 @@
 <script>
 export default {
     props: {
-        attorneys: {
-            type: Object,
-            required: true,
-            default: () => {},
-        },
         doctors: {
             type: Object,
             required: true,
@@ -222,14 +217,30 @@ export default {
             dataStrategy: "new",
         };
     },
+    computed: {
+        // Debug computed properties
+        patientsCount() {
+            return this.patients?.data?.length || 0;
+        },
+        patientsData() {
+            return this.patients?.data || [];
+        }
+    },
+    mounted() {
+        // Component is ready
+    },
     methods: {
         getIcdLabel(codeId) {
-        const code = (this.icdCodes?.data ?? []).find(c => c.id === codeId);
-        return code ? `${code.code} - ${code.description}` : 'Unknown';
-    },
-    removeIcdCode(codeId) {
-        this.form.ict_code_id = this.form.ict_code_id.filter(id => id !== codeId);
-    },
+            const code = (this.icdCodes?.data ?? []).find(c => c.id === codeId);
+            return code ? `${code.code} - ${code.description}` : 'Unknown';
+        },
+        removeIcdCode(codeId) {
+            this.form.ict_code_id = this.form.ict_code_id.filter(id => id !== codeId);
+        },
+        updateIcdCodes() {
+            // This method is called when ICD codes selection changes
+            // You can add any additional logic here if needed
+        },
     },
     watch: {
         dataStrategy: {

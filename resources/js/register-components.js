@@ -6,6 +6,7 @@ import { defineAsyncComponent } from "vue";
 import { Head as InertiaHead } from "@inertiajs/vue3";
 const AppLogo = defineAsyncComponent(() => import("./components/application/app-logo.vue"));
 const AppModelTable = defineAsyncComponent(() => import("./components/application/app-model-table.vue"));
+const Avatar = defineAsyncComponent(() => import("./components/avatar.vue"));
 const Button = defineAsyncComponent(() => import("./components/button.vue"));
 const ButtonWidget = defineAsyncComponent(() => import("./components/button-widget.vue"));
 const Card = defineAsyncComponent(() => import("./components/card.vue"));
@@ -44,6 +45,7 @@ const VerticalMenuItem = defineAsyncComponent(() => import("./components/vertica
 const VerticalMenu = defineAsyncComponent(() => import("./components/vertical-menu.vue"));
 
 const components = {
+    "v-avatar": Avatar,
     "v-inertia-head": InertiaHead,
     "v-app-logo": AppLogo,
     "v-app-model-table": AppModelTable,

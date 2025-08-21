@@ -14,7 +14,7 @@ class DocumentType extends Model
     const REFERRAL_SUMMARY = 1;
     const INVOICE = 2;
     const LETTER_OF_PROTECTION = 3;
-    const MEDICAL_RESULTS = 4;    
+    const MEDICAL_RESULTS = 4;
     const MEDICAL_LIEN = 5;
 
     /**

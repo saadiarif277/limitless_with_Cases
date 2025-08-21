@@ -12,6 +12,7 @@
         <button
             v-for="tab in tabs"
             :key="tab.name"
+            v-show="!tab.show || tab.show()"
             @click="activeTab = tab.name"
             :class="[
                 'px-4 py-2 rounded-md text-sm font-medium focus:outline-none border',
@@ -57,7 +58,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
                             <!-- Patient Name -->
                             <div class="flex items-center gap-3">
-                                <v-avatar size="40" class="bg-primary-100 text-primary-600">
+                                <v-avatar size="lg" class="bg-primary-100 text-primary-600">
                                     {{ caseDetails.patient?.name?.charAt(0) || "N" }}
                                 </v-avatar>
                                 <div>
@@ -435,6 +436,538 @@
                 </v-content-body>
             </div>
 
+            <!-- LOP Management Tab -->
+            <div v-if="activeTab === 'lop'">
+                <v-content-body>
+                    <!-- LOP Details Section -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <v-section-heading>
+                            <template #title>
+                                <div class="flex items-center gap-2">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke-width="1.5"
+                                        stroke="currentColor"
+                                        class="w-5 h-5 text-primary-500"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                    </svg>
+                                    <span class="text-primary-500">LOP Details</span>
+                                </div>
+                            </template>
+                        </v-section-heading>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                            <!-- LOP Date -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>LOP Date</v-form-label>
+                                    <v-form-input
+                                        type="date"
+                                        v-model="lopForm.lop_date"
+                                        :error="form.errors.lop_date"
+                                        :disabled="form.processing"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- LOP Expiration Date -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>LOP Expiration Date</v-form-label>
+                                    <v-form-input
+                                        type="date"
+                                        v-model="lopForm.lop_expiration_date"
+                                        :error="form.errors.lop_expiration_date"
+                                        :disabled="form.processing"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- LOP Status -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>LOP Status</v-form-label>
+                                    <v-form-select
+                                        v-model="lopForm.lop_status"
+                                        :options="[
+                                            { label: 'Active', value: 'active' },
+                                            { label: 'Expired', value: 'expired' },
+                                            { label: 'Revoked', value: 'revoked' },
+                                        ]"
+                                        :error="form.errors.lop_status"
+                                        :disabled="form.processing"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- LOP Acknowledgment Received -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>LOP Acknowledgment Received</v-form-label>
+                                    <v-form-select
+                                        v-model="lopForm.lop_acknowledgment_received"
+                                        :options="[
+                                            { label: 'Yes', value: 'yes' },
+                                            { label: 'No', value: 'no' },
+                                        ]"
+                                        :error="form.errors.lop_acknowledgment_received"
+                                        :disabled="form.processing"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- LOP Acknowledgment Date -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>LOP Acknowledgment Date</v-form-label>
+                                    <v-form-input
+                                        type="date"
+                                        v-model="lopForm.lop_acknowledgment_date"
+                                        :error="form.errors.lop_acknowledgment_date"
+                                        :disabled="form.processing"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- LOP Verification Status -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>LOP Verification Status</v-form-label>
+                                    <v-form-select
+                                        v-model="lopForm.lop_verification_status"
+                                        :options="[
+                                            { label: 'Verified', value: 'verified' },
+                                            { label: 'Unverified', value: 'unverified' },
+                                        ]"
+                                        :error="form.errors.lop_verification_status"
+                                        :disabled="form.processing"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- LOP Verification Date -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>LOP Verification Date</v-form-label>
+                                    <v-form-input
+                                        type="date"
+                                        v-model="lopForm.lop_verification_date"
+                                        :error="form.errors.lop_verification_date"
+                                        :disabled="form.processing"
+                                    />
+                                </v-form-group>
+                            </div>
+                        </div>
+
+                        <!-- LOP Document Upload -->
+                        <div class="mt-6">
+                            <v-form-group>
+                                <v-form-label>LOP Document Upload</v-form-label>
+                                <v-form-input
+                                    type="file"
+                                    v-model="lopForm.lop_document"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    :error="form.errors.lop_document"
+                                    :disabled="form.processing"
+                                />
+                                <small class="text-gray-500">Accepted formats: PDF, DOC, DOCX, JPG, JPEG, PNG</small>
+                            </v-form-group>
+                        </div>
+                    </div>
+
+                    <!-- Attorney/Law Firm Information Section -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <v-section-heading>
+                            <template #title>
+                                <div class="flex items-center gap-2">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke-width="1.5"
+                                        stroke="currentColor"
+                                        class="w-5 h-5 text-primary-500"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"
+                                        />
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M9.879 16.121A3 3 0 1012.015 11L11 14H9l1.878 2.121z"
+                                        />
+                                    </svg>
+                                    <span class="text-primary-500">Attorney/Law Firm Information</span>
+                                </div>
+                            </template>
+                        </v-section-heading>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                            <!-- Law Firm Name -->
+                            <div class="sm:col-span-2">
+                                <v-form-group>
+                                    <v-form-label>Law Firm Name</v-form-label>
+                                    <v-form-input
+                                        v-model="lopForm.law_firm_name"
+                                        :error="form.errors.law_firm_name"
+                                        :disabled="form.processing"
+                                        placeholder="Enter law firm name"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Attorney Contact Person -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Attorney Contact Person</v-form-label>
+                                    <v-form-input
+                                        v-model="lopForm.attorney_contact_person"
+                                        :error="form.errors.attorney_contact_person"
+                                        :disabled="form.processing"
+                                        placeholder="Enter attorney name"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Attorney Phone -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Attorney Phone</v-form-label>
+                                    <v-form-input
+                                        v-model="lopForm.attorney_phone"
+                                        :error="form.errors.attorney_phone"
+                                        :disabled="form.processing"
+                                        placeholder="Enter phone number"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Attorney Fax -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Attorney Fax</v-form-label>
+                                    <v-form-input
+                                        v-model="lopForm.attorney_fax"
+                                        :error="form.errors.attorney_fax"
+                                        :disabled="form.processing"
+                                        placeholder="Enter fax number"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Attorney Bar Number -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Attorney Bar Number</v-form-label>
+                                    <v-form-input
+                                        v-model="lopForm.attorney_bar_number"
+                                        :error="form.errors.attorney_bar_number"
+                                        :disabled="form.processing"
+                                        placeholder="Enter bar number"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Attorney File/Claim Number -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Attorney File/Claim Number</v-form-label>
+                                    <v-form-input
+                                        v-model="lopForm.attorney_file_number"
+                                        :error="form.errors.attorney_file_number"
+                                        :disabled="form.processing"
+                                        placeholder="Enter file/claim number"
+                                    />
+                                </v-form-group>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Case/Litigation Information Section -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <v-section-heading>
+                            <template #title>
+                                <div class="flex items-center gap-2">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke-width="1.5"
+                                        stroke="currentColor"
+                                        class="w-5 h-5 text-primary-500"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                                        />
+                                    </svg>
+                                    <span class="text-primary-500">Case/Litigation Information</span>
+                                </div>
+                            </template>
+                        </v-section-heading>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                            <!-- Case Number -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Case Number</v-form-label>
+                                    <v-form-input
+                                        v-model="lopForm.case_number"
+                                        :error="form.errors.case_number"
+                                        :disabled="form.processing"
+                                        placeholder="Enter case number"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Court/Jurisdiction -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Court/Jurisdiction</v-form-label>
+                                    <v-form-input
+                                        v-model="lopForm.court_jurisdiction"
+                                        :error="form.errors.court_jurisdiction"
+                                        :disabled="form.processing"
+                                        placeholder="Enter court/jurisdiction"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Insurance Company Name -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Insurance Company Name</v-form-label>
+                                    <v-form-input
+                                        v-model="lopForm.insurance_company_name"
+                                        :error="form.errors.insurance_company_name"
+                                        :disabled="form.processing"
+                                        placeholder="Enter insurance company"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Insurance Claim Number -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Insurance Claim Number</v-form-label>
+                                    <v-form-input
+                                        v-model="lopForm.insurance_claim_number"
+                                        :error="form.errors.insurance_claim_number"
+                                        :disabled="form.processing"
+                                        placeholder="Enter claim number"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Date of Accident/Incident -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Date of Accident/Incident</v-form-label>
+                                    <v-form-input
+                                        type="date"
+                                        v-model="lopForm.accident_date"
+                                        :error="form.errors.accident_date"
+                                        :disabled="form.processing"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Accident/Incident Description -->
+                            <div class="sm:col-span-2">
+                                <v-form-group>
+                                    <v-form-label>Accident/Incident Description</v-form-label>
+                                    <v-form-textarea
+                                        v-model="lopForm.accident_description"
+                                        :error="form.errors.accident_description"
+                                        :disabled="form.processing"
+                                        placeholder="Describe the accident/incident"
+                                        rows="3"
+                                    />
+                                </v-form-group>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Financial Information Section -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <v-section-heading>
+                            <template #title>
+                                <div class="flex items-center gap-2">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke-width="1.5"
+                                        stroke="currentColor"
+                                        class="w-5 h-5 text-primary-500"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.414M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    <span class="text-primary-500">Financial Information</span>
+                                </div>
+                            </template>
+                        </v-section-heading>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                            <!-- Estimated Case Value -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Estimated Case Value</v-form-label>
+                                    <v-form-input
+                                        type="number"
+                                        v-model="lopForm.estimated_case_value"
+                                        :error="form.errors.estimated_case_value"
+                                        :disabled="form.processing"
+                                        placeholder="0.00"
+                                        step="0.01"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Contingency Percentage -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Contingency Percentage</v-form-label>
+                                    <v-form-input
+                                        type="number"
+                                        v-model="lopForm.contingency_percentage"
+                                        :error="form.errors.contingency_percentage"
+                                        :disabled="form.processing"
+                                        placeholder="0"
+                                        min="0"
+                                        max="100"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Current Medical Specials -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Current Medical Specials</v-form-label>
+                                    <v-form-input
+                                        type="number"
+                                        v-model="lopForm.current_medical_specials"
+                                        :error="form.errors.current_medical_specials"
+                                        :disabled="form.processing"
+                                        placeholder="0.00"
+                                        step="0.01"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Outstanding Balance -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Outstanding Balance</v-form-label>
+                                    <v-form-input
+                                        type="number"
+                                        v-model="lopForm.outstanding_balance"
+                                        :error="form.errors.outstanding_balance"
+                                        :disabled="form.processing"
+                                        placeholder="0.00"
+                                        step="0.01"
+                                    />
+                                </v-form-group>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Treatment Authorization Section -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <v-section-heading>
+                            <template #title>
+                                <div class="flex items-center gap-2">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke-width="1.5"
+                                        stroke="currentColor"
+                                        class="w-5 h-5 text-primary-500"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    <span class="text-primary-500">Treatment Authorization</span>
+                                </div>
+                            </template>
+                        </v-section-heading>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                            <!-- Authorized Treatment Types -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Authorized Treatment Types</v-form-label>
+                                    <v-form-textarea
+                                        v-model="lopForm.authorized_treatment_types"
+                                        :error="form.errors.authorized_treatment_types"
+                                        :disabled="form.processing"
+                                        placeholder="List authorized treatment types"
+                                        rows="3"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Treatment Limitations -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Treatment Limitations</v-form-label>
+                                    <v-form-textarea
+                                        v-model="lopForm.treatment_limitations"
+                                        :error="form.errors.treatment_limitations"
+                                        :disabled="form.processing"
+                                        placeholder="List any treatment limitations"
+                                        rows="3"
+                                    />
+                                </v-form-group>
+                            </div>
+
+                            <!-- Authorization Expiration Date -->
+                            <div>
+                                <v-form-group>
+                                    <v-form-label>Authorization Expiration Date</v-form-label>
+                                    <v-form-input
+                                        type="date"
+                                        v-model="lopForm.authorization_expiration_date"
+                                        :error="form.errors.authorization_expiration_date"
+                                        :disabled="form.processing"
+                                    />
+                                </v-form-group>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Save All LOP Information Button -->
+                    <div class="flex justify-center mt-8">
+                        <v-button
+                            @click="saveAllLopInformation"
+                            color="primary"
+                            :disabled="form.processing"
+                            class="px-8 py-3 text-lg"
+                        >
+                            Save All LOP Information
+                        </v-button>
+                    </div>
+                </v-content-body>
+            </div>
+
             <!-- Referrals Tab -->
             <div v-if="activeTab === 'referrals'">
                 <v-content-body>
@@ -741,19 +1274,23 @@ export default {
         },
         icdCodeDescription: {
             type: String,
-            required: true,
+            required: false,
+            default: 'N/A'
         },
         cptCodeDescriptions: {
             type: Array,
-            required: true,
+            required: false,
+            default: () => []
         },
         referrals: {
             type: Array,
-            required: true,
+            required: false,
+            default: () => []
         },
         allCptCodes: {
             type: Array,
-            required: true,
+            required: false,
+            default: () => []
         },
     },
     data() {
@@ -763,17 +1300,29 @@ export default {
                 { name: "patient", label: "Patient Information" },
                 { name: "attorney", label: "Attorney Information" },
                 { name: "billing", label: "Billing Information" },
-                { name: "policy", label: "Policy Limit Information" },
+                { name: "policy", label: "Policy Limit Information", show: () => this.caseDetails?.billing_type !== 'LOP' },
+                { name: "lop", label: "LOP Management" },
                 { name: "referrals", label: "Referrals" },
                 { name: "cms", label: "CMS 1500 Form" },
             ],
-            activeTab: "patient", // Default active tab
-            billingType: this.caseDetails.billing_type || "LOP", // Default billing type
-            form: this.$inertia.form({
-                cptCodes: this.caseDetails.cpt_codes
-                    ? JSON.parse(this.caseDetails.cpt_codes)
-                    : [], // Initialize CPT codes
-            }),
+            activeTab: "lop", // Default active tab to LOP
+            billingType: this.caseDetails?.billing_type || "LOP", // Default billing type
+            form: {
+                cptCodes: (() => {
+                    try {
+                        if (this.caseDetails?.cpt_codes) {
+                            const parsed = JSON.parse(this.caseDetails.cpt_codes);
+                            return Array.isArray(parsed) ? parsed : [];
+                        }
+                        return [];
+                    } catch (error) {
+                        console.warn('Error parsing CPT codes:', error);
+                        return [];
+                    }
+                })(),
+                processing: false,
+                errors: {},
+            },
             isModalOpen: false, // Reduction modal state
             reductionAmount: null, // Reduction amount input
             reductionFile: null, // Reduction file input
@@ -782,6 +1331,46 @@ export default {
 
             formData: null,
             savedFormId: null,
+
+            // LOP Form Data
+            lopForm: {
+                // LOP Details
+                lop_date: this.caseDetails.lop_date || null,
+                lop_expiration_date: this.caseDetails.lop_expiration_date || null,
+                lop_status: this.caseDetails.lop_status || 'active',
+                lop_acknowledgment_received: this.caseDetails.lop_acknowledgment_received || 'no',
+                lop_acknowledgment_date: this.caseDetails.lop_acknowledgment_date || null,
+                lop_verification_status: this.caseDetails.lop_verification_status || 'unverified',
+                lop_verification_date: this.caseDetails.lop_verification_date || null,
+                lop_document: null,
+
+                // Attorney/Law Firm Information
+                law_firm_name: this.caseDetails.law_firm_name || '',
+                attorney_contact_person: this.caseDetails.attorney_contact_person || '',
+                attorney_phone: this.caseDetails.attorney_phone || '',
+                attorney_fax: this.caseDetails.attorney_fax || '',
+                attorney_bar_number: this.caseDetails.attorney_bar_number || '',
+                attorney_file_number: this.caseDetails.attorney_file_number || '',
+
+                // Case/Litigation Information
+                case_number: this.caseDetails.case_number || '',
+                court_jurisdiction: this.caseDetails.court_jurisdiction || '',
+                insurance_company_name: this.caseDetails.insurance_company_name || '',
+                insurance_claim_number: this.caseDetails.insurance_claim_number || '',
+                accident_date: this.caseDetails.accident_date || null,
+                accident_description: this.caseDetails.accident_description || '',
+
+                // Financial Information
+                estimated_case_value: this.caseDetails.estimated_case_value || '',
+                contingency_percentage: this.caseDetails.contingency_percentage || '',
+                current_medical_specials: this.caseDetails.current_medical_specials || '',
+                outstanding_balance: this.caseDetails.outstanding_balance || '',
+
+                // Treatment Authorization
+                authorized_treatment_types: this.caseDetails.authorized_treatment_types || '',
+                treatment_limitations: this.caseDetails.treatment_limitations || '',
+                authorization_expiration_date: this.caseDetails.authorization_expiration_date || null,
+            },
         };
     },
     methods: {
@@ -1018,6 +1607,68 @@ export default {
             } catch (error) {
                 this.$toast().error('Error downloading form');
                 console.error('Error downloading form:', error);
+            }
+        },
+
+        // Save all LOP information
+        async saveAllLopInformation() {
+            const formData = new FormData();
+            formData.append("case_id", this.caseDetails.case_id);
+
+            // Append LOP details
+            formData.append("lop_date", this.lopForm.lop_date);
+            formData.append("lop_expiration_date", this.lopForm.lop_expiration_date);
+            formData.append("lop_status", this.lopForm.lop_status);
+            formData.append("lop_acknowledgment_received", this.lopForm.lop_acknowledgment_received);
+            formData.append("lop_acknowledgment_date", this.lopForm.lop_acknowledgment_date);
+            formData.append("lop_verification_status", this.lopForm.lop_verification_status);
+            formData.append("lop_verification_date", this.lopForm.lop_verification_date);
+            if (this.lopForm.lop_document) {
+                formData.append("lop_document", this.lopForm.lop_document);
+            }
+
+            // Append Attorney/Law Firm Information
+            formData.append("law_firm_name", this.lopForm.law_firm_name);
+            formData.append("attorney_contact_person", this.lopForm.attorney_contact_person);
+            formData.append("attorney_phone", this.lopForm.attorney_phone);
+            formData.append("attorney_fax", this.lopForm.attorney_fax);
+            formData.append("attorney_bar_number", this.lopForm.attorney_bar_number);
+            formData.append("attorney_file_number", this.lopForm.attorney_file_number);
+
+            // Append Case/Litigation Information
+            formData.append("case_number", this.lopForm.case_number);
+            formData.append("court_jurisdiction", this.lopForm.court_jurisdiction);
+            formData.append("insurance_company_name", this.lopForm.insurance_company_name);
+            formData.append("insurance_claim_number", this.lopForm.insurance_claim_number);
+            formData.append("accident_date", this.lopForm.accident_date);
+            formData.append("accident_description", this.lopForm.accident_description);
+
+            // Append Financial Information
+            formData.append("estimated_case_value", this.lopForm.estimated_case_value);
+            formData.append("contingency_percentage", this.lopForm.contingency_percentage);
+            formData.append("current_medical_specials", this.lopForm.current_medical_specials);
+            formData.append("outstanding_balance", this.lopForm.outstanding_balance);
+
+            // Append Treatment Authorization
+            formData.append("authorized_treatment_types", this.lopForm.authorized_treatment_types);
+            formData.append("treatment_limitations", this.lopForm.treatment_limitations);
+            formData.append("authorization_expiration_date", this.lopForm.authorization_expiration_date);
+
+            try {
+                const response = await axios.post(
+                    route("panel.admin.cases.saveLopInformation", {
+                        case: this.caseDetails.case_id,
+                    }),
+                    formData,
+                    {
+                        headers: { "Content-Type": "multipart/form-data" },
+                    }
+                );
+                this.$toast().success("LOP information updated successfully.");
+                this.$inertia.reload(); // Reload the page to reflect changes
+            } catch (error) {
+                this.$toast().error("Error updating LOP information.");
+                console.error("Error:", error.response ? error.response.data : error.message);
             }
         },
     },

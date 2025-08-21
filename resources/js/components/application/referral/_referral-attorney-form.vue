@@ -135,19 +135,19 @@ export default {
             required: true,
             default: () => {},
         },
-        attorneys: {
-            type: Object,
-            required: true,
-            default: () => {},
-        },
         form: {
             type: Object,
             required: true,
             default: () => {},
         },
+        userRole: {
+            type: String,
+            required: false,
+            default: '',
+        },
         patients: {
             type: Object,
-            required: true,
+            required: false,
             default: () => {},
         },
         referralReasons: {

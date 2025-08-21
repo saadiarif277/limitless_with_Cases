@@ -1,1 +1,0 @@
-import{_ as t}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{o as e,c as n,h as s}from"./app-Bi_K_mTy.js";const c={name:"ContentFootComponent"},r={class:"v-content-foot p-4 sm:px-6"};function a(o,p,_,f,m,d){return e(),n("div",r,[s(o.$slots,"default")])}const u=t(c,[["render",a]]);export{u as default};

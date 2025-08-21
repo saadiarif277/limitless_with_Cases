@@ -1,5 +1,43 @@
 <template>
     <v-form class="h-full" @submit.prevent="submitForm">
+        <!-- Error Display -->
+        <div v-if="Object.keys(form.errors).length > 0" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">Please fix the following errors:</h3>
+                    <div class="mt-2 text-sm text-red-700">
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li v-for="(error, field) in form.errors" :key="field">
+                                {{ error }}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Message -->
+        <div v-if="showSuccessMessage" class="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM5.293 9.293a1 1 0 011.414 0L9 11.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-green-800">Referral created successfully!</h3>
+                    <div class="mt-2 text-sm text-green-700">
+                        Your referral has been submitted and is now being processed.
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="h-full divide-y divide-gray-200 space-y-12">
             <!-- Referral Information Section -->
             <div>
@@ -8,7 +46,7 @@
                     <v-form-group>
                         <v-form-label>Referral Date</v-form-label>
                         <v-form-input type="date" v-model="form.referral_date" :error="form.errors.referral_date"
-                            :disabled="form.processing" />
+                            :disabled="form.processing" @change="onFormFieldChange" />
                         <v-form-error v-if="form.errors.referral_date">{{ form.errors.referral_date }}</v-form-error>
                     </v-form-group>
 
@@ -16,29 +54,58 @@
                     <v-form-group>
                         <v-form-label>Referral Status</v-form-label>
                         <v-form-select
-                            :options="referralStatuses.data.map((referralStatus) => ({ label: referralStatus.name, value: referralStatus.referral_status_id }))"
+                            :options="(referralStatuses?.data || []).map((referralStatus) => ({ label: referralStatus.name, value: referralStatus.referral_status_id }))"
                             :error="form.errors.referral_status_id" :disabled="form.processing" :required="true"
-                            v-model="form.referral_status_id" />
+                            v-model="form.referral_status_id" @change="onFormFieldChange" />
                         <v-form-error v-if="form.errors.referral_status_id">{{ form.errors.referral_status_id }}</v-form-error>
                     </v-form-group>
 
-                    <!-- Referral State -->
+                    <!-- Injury Date -->
                     <v-form-group>
-                        <v-form-label>Referral State</v-form-label>
-                        <v-form-select
-                            :options="(referralStates || states).data.map((state) => ({ label: state.name, value: state.state_id }))"
-                            :error="form.errors.state_id" :disabled="form.processing" :required="true"
-                            v-model="form.state_id" />
+                        <v-form-label>Injury Date</v-form-label>
+                        <v-form-input type="date" v-model="form.patient.injury_date" :error="form.errors['patient.injury_date']"
+                            :disabled="form.processing" :required="true" @change="onFormFieldChange" />
+                        <v-form-error v-if="form.errors['patient.injury_date']">{{ form.errors['patient.injury_date'] }}</v-form-error>
+                    </v-form-group>
+
+                    <!-- Referral State -->
+                    <v-form-group class="col-span-full md:col-span-2">
+                        <v-form-label><span class="text-blue-500 italic">Referral State</span></v-form-label>
+                        <div class="flex items-center gap-2">
+                            <v-form-select
+                                :options="availableStates"
+                                :error="form.errors.state_id"
+                                :disabled="form.processing || isAttorney"
+                                :required="true"
+                                v-model="form.state_id"
+                                @change="onFormFieldChange"
+                                class="flex-1"
+                            />
+                            <div v-if="isUpdatingData" class="flex items-center gap-2 text-sm text-gray-500">
+                                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                                Updating...
+                            </div>
+                            <div v-if="isAttorney" class="text-sm text-gray-500 italic">
+                                (Attorney's state)
+                            </div>
+                        </div>
+                        <div v-if="isAttorney" class="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                            <strong>Note:</strong> As an attorney, you can only create referrals within your assigned state.
+                            Only doctors and patients from your state will be available for selection.
+                        </div>
                         <v-form-error v-if="form.errors.state_id">{{ form.errors.state_id }}</v-form-error>
+                        <div v-if="form.state_id" class="text-sm text-gray-600 mt-1">
+                            Selected: {{ currentStateName }}
+                        </div>
                     </v-form-group>
 
                     <!-- CPT Codes -->
                     <v-form-group>
                         <v-form-label>CPT Codes</v-form-label>
                         <v-form-select
-                            :options="(CptCodes?.data ?? []).map((code) => ({ label: code.code + ' - ' + code.description, value: code.id }))"
+                            :options="getCptCodeOptions()"
                             :error="form.errors.cpt_code_id" :disabled="form.processing" :required="true" multiple
-                            v-model="form.selectedCptCodes" />
+                            v-model="form.selectedCptCodes" @change="onFormFieldChange" />
                         <!-- Display selected CPT codes as badges -->
                         <div v-if="form.selectedCptCodes.length" class="selected-codes">
                             <span v-for="(code, index) in form.selectedCptCodes" :key="index" class="badge">
@@ -53,9 +120,9 @@
                     <v-form-group>
                         <v-form-label>Piloting Physician</v-form-label>
                         <v-form-select
-                            :options="(physicians || physicians).data.map((physician) => ({ label: physician.name, value: physician.user_id }))"
+                            :options="(physicians?.data || []).map((physician) => ({ label: physician.name, value: physician.user_id }))"
                             :error="form.errors.doctor_user_id" :disabled="form.processing" :required="true"
-                            v-model="form.doctor_user_id" />
+                            v-model="form.doctor_user_id" @change="onFormFieldChange" />
                         <v-form-error v-if="form.errors.doctor_user_id">{{ form.errors.doctor_user_id }}</v-form-error>
                     </v-form-group>
 
@@ -67,7 +134,7 @@
                         <v-form-select
                             :options="['LOP', 'Insurance'].map((type) => ({ label: type, value: type }))"
                             :error="form.errors.billing_type" :disabled="form.processing" :required="true"
-                            v-model="form.billing_type" />
+                            v-model="form.billing_type" @change="onFormFieldChange" />
                         <v-form-error v-if="form.errors.billing_type">{{ form.errors.billing_type }}</v-form-error>
                     </v-form-group>
 
@@ -82,25 +149,51 @@
 
             <!-- Other Sections -->
             <x-policy-form @update:insuranceData="handleInsuranceData" />
-            <x-referral-doctor-form :attorneys="attorneys" :doctors="doctors" :document-categories="documentCategories"
-                :form="form" :medical-specialties="medicalSpecialties" :patients="patients"
+
+            <x-referral-doctor-form :attorneys="doctorsData" :doctors="doctorsData" :document-categories="documentCategories"
+                :form="form" :medical-specialties="medicalSpecialties" :patients="patientsData"
                 :referral-reasons="referralReasons" :referral-statuses="referralStatuses" :states="states" />
 
-            <x-referral-patient-form :attorneys="attorneys" :doctors="doctors" :document-categories="documentCategories"
-                :form="form" :medical-specialties="medicalSpecialties" :patients="patients"
+            <x-referral-patient-form :attorneys="attorneysData" :doctors="doctorsData" :document-categories="documentCategories"
+                :form="form" :medical-specialties="medicalSpecialties" :patients="patientsData"
                 :referral-reasons="referralReasons" :referral-statuses="referralStatuses" :states="states" :icdCodes="icdCodes" />
 
-            <x-referral-attorney-form :attorneys="attorneys" :doctors="doctors"
-                :document-categories="documentCategories" :form="form" :medical-specialties="medicalSpecialties"
-                :patients="patients" :referral-reasons="referralReasons" :referral-statuses="referralStatuses"
-                :states="states" />
+            <!-- Referral Reasons Section -->
+            <div class="col-span-full bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Referral Reasons</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div v-for="reason in (referralReasons?.data || [])" :key="reason.referral_reason_id" class="flex items-center">
+                        <input
+                            type="checkbox"
+                            :id="'reason_' + reason.referral_reason_id"
+                            :value="reason.referral_reason_id"
+                            v-model="form.patient.referral_reason_ids"
+                            @change="onFormFieldChange"
+                            class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        />
+                        <label :for="'reason_' + reason.referral_reason_id" class="ml-2 text-sm text-gray-700">
+                            {{ reason.name }}
+                        </label>
+                    </div>
+                </div>
+                <v-form-error v-if="form.errors['patient.referral_reason_ids']">{{ form.errors['patient.referral_reason_ids'] }}</v-form-error>
+            </div>
+
+            <x-referral-attorney-form
+                :attorneys="attorneysData"
+                :form="form"
+                :user-role="userRole"
+                :patients="patientsData"
+                :referral-reasons="referralReasons"
+                :states="states"
+            />
 
             <x-referral-documents-form :attorneys="attorneys" :doctors="doctors"
                 :document-categories="documentCategories" :form="form" :medical-specialties="medicalSpecialties"
                 :patients="patients" :referral-reasons="referralReasons" :referral-statuses="referralStatuses"
                 :states="states" />
 
-            <!-- Submit Button -->
+        <!-- Submit Button -->
             <v-form-group
                 class="col-span-full flex items-center justify-end gap-2 text-right border-t border-gray-200 bg-gray-50 px-6 py-4">
                 <progress v-if="form.progress" :value="form.progress.percentage" max="100">
@@ -111,8 +204,15 @@
                     Cancel
                 </v-button>
 
-                <v-button :disabled="form.processing">
-                    Create Referral
+                <v-button @click="resetForm" color="gray" :disabled="form.processing">
+                    Reset
+                </v-button>
+
+                <v-button
+                    :disabled="form.processing || !isFormReady()"
+                    :class="{ 'opacity-50': !isFormReady() }"
+                >
+                    {{ isFormReady() ? 'Create Referral' : 'Please fill required fields' }}
                 </v-button>
             </v-form-group>
         </div>
@@ -153,15 +253,77 @@ export default {
         CptCodes: { type: Object, required: false },
     },
     data() {
+        const currentUser = this.$page.props.auth.user;
+        const userRole = currentUser?.roles?.[0]?.name;
+
+        // Auto-select attorney or doctor based on user role
+        let autoSelectedAttorney = null;
+        let autoSelectedDoctor = null;
+
+        if (userRole === 'Attorney') {
+            // Find the current user in attorneys list and auto-select
+            const attorneyData = (this.attorneys?.data || []).find(attorney => attorney.user_id === currentUser.user_id);
+            if (attorneyData) {
+                autoSelectedAttorney = {
+                    name: attorneyData.name,
+                    email: attorneyData.email,
+                    phone_number: attorneyData.phone_number || "",
+                    user_id: attorneyData.user_id, // Add user_id field
+                    law_firm: {
+                        name: attorneyData.law_firm?.name || "",
+                        email: attorneyData.law_firm?.email || "",
+                        phone_number: attorneyData.law_firm?.phone_number || "",
+                        address_line_1: attorneyData.law_firm?.address_line_1 || "",
+                        address_line_2: attorneyData.law_firm?.address_line_2 || "",
+                        city: attorneyData.law_firm?.city || "",
+                        state_id: attorneyData.law_firm?.state_id || currentUser.state_id || "",
+                        zip_code: attorneyData.law_firm?.zip_code || "",
+                    },
+                };
+            }
+        } else if (userRole === 'Doctor') {
+            // Find the current user in doctors list and auto-select
+            const doctorData = (this.doctors?.data || []).find(doctor => doctor.user_id === currentUser.user_id);
+            if (doctorData) {
+                autoSelectedDoctor = {
+                    user_id: doctorData.user_id,
+                    name: doctorData.name,
+                    email: doctorData.email,
+                    phone_number: doctorData.phone_number || "",
+                    medical_specialty_id: doctorData.medical_specialty_id || null, // Add required medical_specialty_id
+                    clinic: {
+                        clinic_id: doctorData.clinics?.[0]?.clinic_id || "",
+                        name: doctorData.clinics?.[0]?.name || "",
+                        email: doctorData.clinics?.[0]?.email || "",
+                        phone_number: doctorData.clinics?.[0]?.phone_number || "",
+                        address_line_1: doctorData.clinics?.[0]?.address_line_1 || "",
+                        address_line_2: doctorData.clinics?.[0]?.address_line_2 || "",
+                        city: doctorData.clinics?.[0]?.city || "",
+                        state_id: doctorData.clinics?.[0]?.state_id || currentUser.state_id || "",
+                        zip_code: doctorData.clinics?.[0]?.zip_code || "",
+                    },
+                    notes: "",
+                };
+            }
+        }
+
         return {
             form: useForm({
                 referral_date: new Date().toISOString().split('T')[0],
                 referral_status_id: 1,
-                state_id: this.$page.props.auth.user.state_id || "",
-                attorney: {
+                state_id: currentUser?.state_id || "",
+
+                // Top-level user IDs that the repository expects
+                attorney_user_id: autoSelectedAttorney?.user_id || "",
+                doctor_user_id: autoSelectedDoctor?.user_id || "",
+                patient_user_id: "",
+                clinic_id: autoSelectedDoctor?.clinic?.clinic_id || "",
+
+                attorney: autoSelectedAttorney || {
                     name: "",
                     email: "",
                     phone_number: "",
+                    user_id: "", // Add user_id field
                     law_firm: {
                         name: "",
                         email: "",
@@ -169,15 +331,16 @@ export default {
                         address_line_1: "",
                         address_line_2: "",
                         city: "",
-                        state_id: "",
+                        state_id: currentUser?.state_id || "",
                         zip_code: "",
                     },
                 },
-                doctor: {
+                doctor: autoSelectedDoctor || {
                     user_id: "",
                     name: "",
                     email: "",
                     phone_number: "",
+                    medical_specialty_id: null,
                     clinic: {
                         clinic_id: "",
                         name: "",
@@ -186,7 +349,7 @@ export default {
                         address_line_1: "",
                         address_line_2: "",
                         city: "",
-                        state_id: "",
+                        state_id: currentUser?.state_id || "",
                         zip_code: "",
                     },
                     notes: "",
@@ -195,22 +358,22 @@ export default {
                     name: "",
                     email: "",
                     phone_number: "",
+                    user_id: "",
                     height: "",
                     weight: "",
                     gender: "",
                     birthdate: "",
-                    injury_date: "",
+                    injury_date: new Date().toISOString().split('T')[0],
+                    referral_reason_ids: [],
                     address_line_1: "",
                     address_line_2: "",
                     city: "",
-                    state_id: "",
+                    state_id: currentUser?.state_id || "",
                     zip_code: "",
-                    referral_reason_ids: [],
                 },
                 documents: {},
                 selectedCptCodes: [],
                 insuranceData: {},
-
                 billing_type: "",
                 is_cms1500_generated: false,
                 case_won: false,
@@ -221,7 +384,119 @@ export default {
                 created_at: null,
                 updated_at: null,
             }),
+            // Local copies of data that can be updated
+            localAttorneys: this.attorneys || { data: [] },
+            localDoctors: this.doctors || { data: [] },
+            localPatients: this.patients || { data: [] },
+            isUpdatingData: false,
+            showSuccessMessage: false,
         };
+    },
+    computed: {
+        currentUser() {
+            return this.$page.props.auth.user;
+        },
+        userRole() {
+            return this.currentUser?.roles?.[0]?.name;
+        },
+        isAttorney() {
+            return this.userRole === 'Attorney';
+        },
+        isDoctor() {
+            return this.userRole === 'Doctor';
+        },
+        isCaseManager() {
+            return this.userRole === 'Case_manager';
+        },
+        // Get available states for the dropdown
+        availableStates() {
+            // For attorneys, only show their own state
+            if (this.isAttorney && this.currentUser?.state_id) {
+                const userState = this.referralStates?.data?.find(state => state.state_id == this.currentUser.state_id);
+                if (userState) {
+                    return [{
+                        label: userState.name,
+                        value: userState.state_id
+                    }];
+                }
+            }
+
+            // For other roles or if no state restriction, show all states
+            const states = this.referralStates?.data || this.states?.data || [];
+            return states.map(state => ({
+                label: state.name,
+                value: state.state_id
+            }));
+        },
+        // Get current state name for display
+        currentStateName() {
+            const state = this.availableStates.find(s => s.value == this.form.state_id);
+            return state ? state.label : 'Not selected';
+        },
+        // Use local data for attorneys
+        attorneysData() {
+            // For attorneys, only show attorneys from their own state
+            if (this.isAttorney && this.currentUser?.state_id) {
+                const filteredAttorneys = this.localAttorneys?.data?.filter(attorney =>
+                    attorney.law_firm?.state_id == this.currentUser.state_id
+                ) || [];
+                return { data: filteredAttorneys };
+            }
+            return this.localAttorneys;
+        },
+        // Use local data for doctors
+        doctorsData() {
+            // For attorneys, only show doctors from their state
+            if (this.isAttorney && this.currentUser?.state_id) {
+                const filteredDoctors = this.localDoctors?.data?.filter(doctor =>
+                    doctor.clinics?.some(clinic => clinic.state_id == this.currentUser.state_id)
+                ) || [];
+                return { data: filteredDoctors };
+            }
+            return this.localDoctors;
+        },
+        // Use local data for patients
+        patientsData() {
+            // For attorneys, only show patients from their state
+            if (this.isAttorney && this.currentUser?.state_id) {
+                const filteredPatients = this.localPatients?.data?.filter(patient =>
+                    patient.state_id == this.currentUser.state_id
+                ) || [];
+                return { data: filteredPatients };
+            }
+            return this.localPatients;
+        },
+    },
+    watch: {
+        // Keep top-level fields in sync with nested data
+        'form.attorney.user_id'(newValue) {
+            this.form.attorney_user_id = newValue;
+        },
+        'form.doctor.user_id'(newValue) {
+            this.form.doctor_user_id = newValue;
+        },
+        'form.patient.user_id'(newValue) {
+            this.form.patient_user_id = newValue;
+        },
+        'form.doctor.clinic.clinic_id'(newValue) {
+            this.form.clinic_id = newValue;
+        },
+        // Watch for state changes to update available doctors and patients
+        'form.state_id'(newStateId, oldStateId) {
+            if (newStateId && newStateId !== oldStateId) {
+                if (this.isAttorney && this.currentUser?.state_id && newStateId != this.currentUser.state_id) {
+                    this.form.state_id = this.currentUser.state_id; // Revert
+                    return;
+                }
+                this.updateDataByState(newStateId);
+            }
+        },
+        // Watch for any form changes to hide success message
+        'form.data()'() {
+            if (this.showSuccessMessage) {
+                this.showSuccessMessage = false;
+            }
+        }
     },
     methods: {
         handleInsuranceData(data) {
@@ -235,22 +510,319 @@ export default {
             }
         },
         submitForm() {
+            // Validate form before submission
+            const errors = this.validateForm();
+            if (errors.length > 0) {
+                errors.forEach(error => {
+                    this.$toast().error(error);
+                });
+                return;
+            }
+
+            // Hide success message if it was showing
+            this.showSuccessMessage = false;
+
+            // Submit the form
             this.form.post(this.route(this.storeRoute), {
-                onSuccess: () => this.$toast().success("Referral created successfully!"),
-                onError: (errors) => {
-                    Object.keys(errors).forEach((key) => {
-                        this.$toast().error(errors[key]);
-                    });
+                onSuccess: () => {
+                    this.$toast().success('Referral created successfully!');
+                    this.showSuccessMessage = true; // Show success message
+                    this.form.reset(); // Reset form fields
+                    this.form.clearErrors(); // Clear errors
                 },
+                onError: (errors) => {
+                    this.$toast().error('Failed to create referral. Please check the form and try again.');
+                }
             });
         },
+        validateForm() {
+            const errors = [];
+
+            // Check required fields
+            if (!this.form.referral_date) {
+                errors.push("Referral date is required");
+            }
+
+            if (!this.form.referral_status_id) {
+                errors.push("Referral status is required");
+            }
+
+            if (!this.form.state_id) {
+                errors.push("Referral state is required");
+            }
+
+            if (!this.form.patient.injury_date) {
+                errors.push("Injury date is required");
+            }
+
+            if (!this.form.patient.referral_reason_ids || this.form.patient.referral_reason_ids.length === 0) {
+                errors.push("At least one referral reason is required");
+            }
+
+            // Check role-specific requirements
+            if (this.isAttorney) {
+                if (!this.form.doctor_user_id && !this.form.doctor.name) {
+                    errors.push("Doctor information is required for attorneys");
+                }
+
+                // Ensure attorney can only select doctor from their state
+                if (this.form.doctor.user_id) {
+                    const selectedDoctor = this.localDoctors?.data?.find(d => d.user_id == this.form.doctor.user_id);
+                    if (selectedDoctor && this.currentUser?.state_id) {
+                        const doctorInAttorneyState = selectedDoctor.clinics?.some(clinic =>
+                            clinic.state_id == this.currentUser.state_id
+                        );
+                        if (!doctorInAttorneyState) {
+                            errors.push("Selected doctor must be from your assigned state");
+                        }
+                    }
+                }
+            }
+
+            // Check patient information
+            if (!this.form.patient_user_id && !this.form.patient.name) {
+                errors.push("Patient information is required");
+            }
+
+            // Ensure attorney can only select patient from their state
+            if (this.isAttorney && this.form.patient.user_id && this.currentUser?.state_id) {
+                const selectedPatient = this.localPatients?.data?.find(p => p.user_id == this.form.patient.user_id);
+                if (selectedPatient && selectedPatient.state_id != this.currentUser.state_id) {
+                    errors.push("Selected patient must be from your assigned state");
+                }
+            }
+
+            return errors;
+        },
+        isFormReady() {
+            // Debug logging
+            console.log('isFormReady check:', {
+                referral_date: this.form.referral_date,
+                referral_status_id: this.form.referral_status_id,
+                state_id: this.form.state_id,
+                patient_injury_date: this.form.patient?.injury_date,
+                patient_referral_reason_ids: this.form.patient?.referral_reason_ids,
+                patient_name: this.form.patient?.name,
+                patient_user_id: this.form.patient_user_id,
+                doctor_user_id: this.form.doctor_user_id,
+                doctor_name: this.form.doctor?.name,
+                attorney_user_id: this.form.attorney_user_id,
+                attorney_name: this.form.attorney?.name,
+                localDoctors_length: this.localDoctors?.data?.length,
+                localPatients_length: this.localPatients?.data?.length
+            });
+
+            // Check if all required fields are filled
+            const requiredFields = [
+                'referral_date',
+                'referral_status_id',
+                'state_id'
+            ];
+
+            for (const field of requiredFields) {
+                if (!this.form[field]) {
+                    console.log(`Field ${field} is missing:`, this.form[field]);
+                    return false;
+                }
+            }
+
+            // Check nested patient fields
+            if (!this.form.patient?.injury_date) {
+                console.log('Patient injury_date is missing');
+                return false;
+            }
+
+            if (!this.form.patient?.referral_reason_ids || this.form.patient.referral_reason_ids.length === 0) {
+                console.log('Patient referral_reason_ids is missing or empty:', this.form.patient?.referral_reason_ids);
+                return false;
+            }
+
+            // Check if state is selected and data is available
+            if (this.form.state_id) {
+                if (this.localDoctors?.data?.length === 0) {
+                    console.log('No doctors available for selected state');
+                    return false;
+                }
+                if (this.localPatients?.data?.length === 0) {
+                    console.log('No patients available for selected state');
+                    return false;
+                }
+            }
+
+            // Check role-specific requirements
+            if (this.isDoctor && !this.form.attorney_user_id && !this.form.attorney.name) {
+                console.log('Doctor role: attorney information is missing');
+                return false;
+            }
+
+            if (this.isAttorney && !this.form.doctor_user_id && !this.form.doctor.name) {
+                console.log('Attorney role: doctor information is missing');
+                return false;
+            }
+
+            if (!this.form.patient_user_id && !this.form.patient.name) {
+                console.log('Patient information is missing');
+                return false;
+            }
+
+            console.log('Form is ready!');
+            return true;
+        },
         getCptLabel(codeId) {
-            const code = (this.CptCodes?.data ?? []).find(c => c.id === codeId);
+            // CptCodes should now be an array from the backend
+            const codes = Array.isArray(this.CptCodes) ? this.CptCodes : [];
+            const code = codes.find(c => c.id === codeId);
             return code ? `${code.code} - ${code.description}` : 'Unknown';
         },
         removeCptCode(codeId) {
             this.form.selectedCptCodes = this.form.selectedCptCodes.filter(id => id !== codeId);
+            this.onFormFieldChange();
         },
+        // Method to manually trigger auto-selection if needed
+        triggerAutoSelection() {
+            if (this.isAttorney) {
+                const attorneyData = (this.attorneys?.data || []).find(attorney => attorney.user_id === this.currentUser.user_id);
+                if (attorneyData) {
+                    this.form.attorney_user_id = attorneyData.user_id;
+                    this.form.attorney = {
+                        name: attorneyData.name,
+                        email: attorneyData.email,
+                        phone_number: attorneyData.phone_number || "",
+                        user_id: attorneyData.user_id, // Add user_id field
+                        law_firm: {
+                            name: attorneyData.law_firm?.name || "",
+                            email: attorneyData.law_firm?.email || "",
+                            phone_number: attorneyData.law_firm?.phone_number || "",
+                            address_line_1: attorneyData.law_firm?.address_line_1 || "",
+                            address_line_2: attorneyData.law_firm?.address_line_2 || "",
+                            city: attorneyData.law_firm?.city || "",
+                            state_id: attorneyData.law_firm?.state_id || this.currentUser.state_id || "",
+                            zip_code: attorneyData.law_firm?.zip_code || "",
+                        },
+                    };
+                    this.onFormFieldChange(); // Hide success message when auto-selection happens
+                } else {
+                    this.$toast().warning("Attorney data not found. Please contact administrator.");
+                }
+            } else if (this.isDoctor) {
+                const doctorData = (this.doctors?.data || []).find(doctor => doctor.user_id === this.currentUser.user_id);
+                if (doctorData) {
+                    this.form.doctor_user_id = doctorData.user_id;
+                    this.form.clinic_id = doctorData.clinics?.[0]?.clinic_id || "";
+                    this.form.doctor = {
+                        user_id: doctorData.user_id,
+                        name: doctorData.name,
+                        email: doctorData.email,
+                        phone_number: doctorData.phone_number || "",
+                        medical_specialty_id: doctorData.medical_specialty_id || null, // Add required medical_specialty_id
+                        clinic: {
+                            clinic_id: doctorData.clinics?.[0]?.clinic_id || "",
+                            name: doctorData.clinics?.[0]?.name || "",
+                            email: doctorData.clinics?.[0]?.email || "",
+                            phone_number: doctorData.clinics?.[0]?.phone_number || "",
+                            address_line_1: doctorData.clinics?.[0]?.address_line_1 || "",
+                            address_line_2: doctorData.clinics?.[0]?.address_line_2 || "",
+                            city: doctorData.clinics?.[0]?.city || "",
+                            state_id: doctorData.clinics?.[0]?.state_id || this.currentUser.state_id || "",
+                            zip_code: doctorData.clinics?.[0]?.zip_code || "",
+                        },
+                        notes: "",
+                    };
+                    this.onFormFieldChange(); // Hide success message when auto-selection happens
+                } else {
+                    this.$toast().warning("Doctor data not found. Please contact administrator.");
+                }
+            }
+        },
+        // Method to clear success message
+        clearSuccessMessage() {
+            this.showSuccessMessage = false;
+        },
+        // Method to reset the form
+        resetForm() {
+            this.form.reset();
+            this.form.clearErrors();
+            this.showSuccessMessage = false;
+            this.initializeFormState();
+        },
+        // Method to handle form field changes
+        onFormFieldChange() {
+            if (this.showSuccessMessage) {
+                this.showSuccessMessage = false;
+            }
+        },
+        updateDataByState(stateId) {
+            if (!stateId) return;
+
+            this.isUpdatingData = true;
+            this.onFormFieldChange(); // Hide success message when state changes
+            this.fetchDataByState(stateId);
+        },
+        async fetchDataByState(stateId) {
+            try {
+                const response = await fetch(this.route('referrals.data-by-state', { state_id: stateId }), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Update the local data with the filtered results
+                    if (data.attorneys && Array.isArray(data.attorneys.data)) {
+                        this.localAttorneys = data.attorneys;
+                    }
+                    if (data.doctors && Array.isArray(data.doctors.data)) {
+                        this.localDoctors = data.doctors;
+                    }
+                    if (data.patients && Array.isArray(data.patients.data)) {
+                        this.localPatients = data.patients;
+                    }
+                } else {
+                    console.error('Failed to fetch data for state:', stateId, response.status, response.statusText);
+                }
+            } catch (error) {
+                console.error('Error fetching data for state:', error);
+            } finally {
+                this.isUpdatingData = false; // Reset loading state
+            }
+        },
+        // Initialize the form state based on user's default state
+        initializeFormState() {
+            if (this.currentUser?.state_id && !this.form.state_id) {
+                this.form.state_id = this.currentUser.state_id;
+            }
+
+            // For attorneys, ensure they can only use their state
+            if (this.isAttorney && this.currentUser?.state_id) {
+                this.form.state_id = this.currentUser.state_id;
+            }
+        },
+        getCptCodeOptions() {
+            // CptCodes should now be an array from the backend
+            const codes = Array.isArray(this.CptCodes) ? this.CptCodes : [];
+
+            // Safely map the codes
+            return codes.map(code => ({
+                label: `${code.code} - ${code.description}`,
+                value: code.id
+            }));
+        }
+    },
+    mounted() {
+        // Initialize local data with props data
+        this.localAttorneys = this.attorneys || { data: [] };
+        this.localDoctors = this.doctors || { data: [] };
+        this.localPatients = this.patients || { data: [] };
+
+        // Ensure auto-selection happens after component is mounted
+        this.$nextTick(() => {
+            this.triggerAutoSelection();
+            this.initializeFormState();
+        });
     },
 };
 </script>

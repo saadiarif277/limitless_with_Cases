@@ -21,11 +21,10 @@ class DocumentTypeSeeder extends Seeder
             ['name' => 'Medical Results',      'document_category_id' => DocumentCategory::MEDICAL,   'is_permanent' => FALSE, 'is_generated' => FALSE],
             ['name' => 'Medical Lien',         'document_category_id' => DocumentCategory::FINANCIAL, 'is_permanent' => FALSE, 'is_generated' => FALSE],
         ])->each(function ($documentType) {
-            DocumentType::firstOrCreate([
+            DocumentType::updateOrCreate([
                 'name' => $documentType['name'],
-            ], array_merge($documentType, [
-                // ...
-            ]));
+                'document_category_id' => $documentType['document_category_id'],
+            ], $documentType);
         });
     }
 }

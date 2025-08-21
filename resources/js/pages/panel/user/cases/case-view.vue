@@ -335,6 +335,7 @@
                                         Complete
                                     </v-button>
                                     <v-button
+                                        v-if="userRole === 'Attorney' || userRole === 'Case_manager'"
                                         @click="openReductionModal(referral.referral_id)"
                                         :disabled="referral.reduction_requests && referral.reduction_requests.length > 0"
                                         class="bg-orange-500 text-white flex-1"
@@ -410,6 +411,144 @@
                 </div>
             </v-content-body>
         </div>
+
+            <!-- Reduction Requests Tab -->
+            <div v-if="activeTab === 'reduction-requests'">
+                <v-content-body>
+                    <v-section-heading>
+                        <template #title>
+                            <div class="flex items-center gap-2">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke-width="1.5"
+                                    stroke="currentColor"
+                                    class="w-4 h-4 text-primary-500"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M17.25 8.25 21 12m0 0-3.75 3.75M21 12H3"
+                                    />
+                                </svg>
+                                <span class="text-primary-500">Reduction Requests</span>
+                            </div>
+                        </template>
+                    </v-section-heading>
+
+                    <!-- Reduction Requests List -->
+                    <div class="mt-4">
+                        <div v-if="reductionRequests.length === 0" class="text-center text-gray-500 py-8">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900">No reduction requests</h3>
+                            <p class="mt-1 text-sm text-gray-500">No reduction requests have been sent yet.</p>
+                        </div>
+
+                        <div v-else class="space-y-4">
+                            <div v-for="request in reductionRequests" :key="request.id" class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h4 class="text-lg font-medium text-gray-900">
+                                            Reduction Request #{{ request.id }}
+                                        </h4>
+                                        <p class="text-sm text-gray-500">
+                                            Referral #{{ request.referral?.referral_id }} -
+                                            {{ request.referral?.patientUser?.name }}
+                                        </p>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <span :class="getStatusBadgeClass(request.referral_status)">
+                                            {{ getStatusText(request.referral_status) }}
+                                        </span>
+                                        <span :class="getDoctorDecisionBadgeClass(request.doctor_decision)">
+                                            {{ getDoctorDecisionText(request.doctor_decision) }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Amount Requested</label>
+                                        <p class="mt-1 text-lg font-semibold text-gray-900">${{ request.amount }}</p>
+                                    </div>
+                                    <div v-if="request.counter_offer">
+                                        <label class="block text-sm font-medium text-gray-700">Counter Offer</label>
+                                        <p class="mt-1 text-lg font-semibold text-green-600">${{ request.counter_offer }}</p>
+                                    </div>
+                                </div>
+
+                                <div v-if="request.notes" class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700">Notes</label>
+                                    <p class="mt-1 text-sm text-gray-600">{{ request.notes }}</p>
+                                </div>
+
+                                <div v-if="request.file_path" class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700">Attached File</label>
+                                    <a :href="`/storage/${request.file_path}`" target="_blank" class="mt-1 inline-flex items-center text-primary-600 hover:text-primary-500">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Download File
+                                    </a>
+                                </div>
+
+                                <!-- Doctor Decision Form (Only for Doctors) -->
+                                <div v-if="userRole === 'Doctor' && request.doctor_decision === 'pending'" class="border-t pt-4">
+                                    <h5 class="text-md font-medium text-gray-900 mb-3">Respond to Reduction Request</h5>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Decision</label>
+                                            <select v-model="request.decision" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                                                <option value="">Select decision</option>
+                                                <option value="accepted">Accept</option>
+                                                <option value="rejected">Reject</option>
+                                            </select>
+                                        </div>
+                                        <div v-if="request.decision === 'accepted'">
+                                            <label class="block text-sm font-medium text-gray-700">Counter Offer (Optional)</label>
+                                            <input type="number" v-model="request.counter_offer" step="0.01" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500" placeholder="Enter counter offer amount">
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <label class="block text-sm font-medium text-gray-700">Notes (Optional)</label>
+                                        <textarea v-model="request.notes" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500" placeholder="Add any notes about your decision"></textarea>
+                                    </div>
+                                    <div class="mt-4 flex gap-2">
+                                        <button @click="submitDecision(request)" :disabled="!request.decision" class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            Submit Decision
+                                        </button>
+                                        <button @click="resetDecisionForm(request)" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400">
+                                            Reset
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Decision Status (For Attorneys) -->
+                                <div v-if="(userRole === 'Attorney' || userRole === 'Case_manager') && request.doctor_decision !== 'pending'" class="border-t pt-4">
+                                    <h5 class="text-md font-medium text-gray-900 mb-2">Doctor's Decision</h5>
+                                    <div class="bg-gray-50 p-3 rounded-md">
+                                        <p class="text-sm text-gray-600">
+                                            <strong>Decision:</strong>
+                                            <span :class="getDoctorDecisionBadgeClass(request.doctor_decision)">
+                                                {{ getDoctorDecisionText(request.doctor_decision) }}
+                                            </span>
+                                        </p>
+                                        <p v-if="request.counter_offer" class="text-sm text-gray-600 mt-1">
+                                            <strong>Counter Offer:</strong> ${{ request.counter_offer }}
+                                        </p>
+                                        <p v-if="request.notes" class="text-sm text-gray-600 mt-1">
+                                            <strong>Notes:</strong> {{ request.notes }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </v-content-body>
+            </div>
 
             <!-- Billing Information Tab -->
             <div v-if="activeTab === 'billing'">
@@ -551,6 +690,58 @@
             </div>
         </div>
     </div>
+
+    <!-- Reduction Modal -->
+    <v-dialog v-model="isModalOpen" persistent max-width="500px">
+        <v-card>
+            <v-card-title>
+                <span class="headline">Send for Reduction</span>
+            </v-card-title>
+
+            <v-card-text>
+                <!-- Form for validation -->
+                <v-form v-model="isFormValid" ref="reductionForm">
+
+                    <!-- Amount for Reduction Field -->
+                    <v-form-group class="col-span-full sm:col-span-2 xl:col-span-3">
+                        <v-form-label><span class="text-dark-500 italic">Amount for Reduction</span></v-form-label>
+                        <v-form-input
+                            type="number"
+                            v-model="reductionAmount"
+                            step="0.01"
+                            min="0"
+                            class="border border-gray-300 rounded-lg"
+                            required
+                        />
+                        <v-form-error v-if="!reductionAmount">Amount is required</v-form-error>
+                    </v-form-group>
+
+                    <!-- File Upload Field -->
+                    <v-form-group class="col-span-full sm:col-span-2 xl:col-span-3">
+                        <v-form-label><span class="text-dark-500 italic">Upload Supporting File</span></v-form-label>
+                        <v-form-input
+                            type="file"
+                            @change="handleFileChange"
+                            accept=".pdf,.doc,.docx"
+                            class="border border-gray-300 rounded-lg"
+                            required
+                        />
+                        <div v-if="reductionFile" class="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+                            Selected: {{ selectedFileName }}
+                        </div>
+                        <v-form-error v-if="!reductionFile">File is required</v-form-error>
+                        <p class="mt-1 text-xs text-gray-500">Accepted formats: PDF, DOC, DOCX (max 2MB)</p>
+                    </v-form-group>
+
+                </v-form>
+            </v-card-text>
+
+            <v-card-actions>
+                <v-btn text @click="closeReductionModal">Cancel</v-btn>
+                <v-btn color="orange" :disabled="!isFormValid" @click="submitReduction">Submit</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
 </template>
 
 <script>
@@ -584,6 +775,11 @@ export default {
             type: Array,
             required: true,
         },
+        reductionRequests: {
+            type: Array,
+            required: false,
+            default: () => [],
+        },
     },
     data() {
         return {
@@ -593,6 +789,7 @@ export default {
                 { name: "attorney", label: "Attorney Information" },
                 { name: "policy", label: "Policy Limit Information" },
                 { name: "referrals", label: "Referrals" },
+                { name: "reduction-requests", label: "Reduction Requests", show: () => ['Doctor', 'Attorney', 'Case_manager'].includes(this.userRole) },
                 { name: "cms", label: "CMS 1500 Form" },
                 { name: "billing", label: "Billing Information" },
             ],
@@ -604,6 +801,12 @@ export default {
                 cptCodes: [],
                 processing: false,
             },
+            // Reduction modal state
+            isModalOpen: false,
+            reductionAmount: null,
+            reductionFile: null,
+            isFormValid: true,
+            selectedReferralId: null,
         };
     },
     created() {
@@ -617,6 +820,14 @@ export default {
             }
         }
     },
+    watch: {
+        reductionAmount(newVal) {
+            this.validateForm();
+        },
+        reductionFile(newVal) {
+            this.validateForm();
+        }
+    },
     computed: {
         calculateRemainingPolicyLimit() {
             const totalLimit = parseFloat(this.caseDetails.policy_limit_info?.policy_limit || 0);
@@ -628,6 +839,9 @@ export default {
             return this.form.cptCodes.reduce((total, cpt) => {
                 return total + (parseFloat(cpt.value) || 0);
             }, 0).toFixed(2);
+        },
+        selectedFileName() {
+            return this.reductionFile ? this.reductionFile.name : 'No file selected';
         }
     },
     methods: {
@@ -716,6 +930,124 @@ export default {
             this.selectedReferralId = referralId;
             this.isModalOpen = true;
         },
+        // Close reduction modal
+        closeReductionModal() {
+            this.isModalOpen = false;
+            this.reductionAmount = null;
+            this.reductionFile = null;
+            this.selectedReferralId = null;
+            this.isFormValid = true;
+        },
+        // Validate reduction form
+        validateForm() {
+            this.isFormValid = !!(this.reductionAmount && this.reductionFile && this.selectedReferralId);
+        },
+        // Handle file change
+        handleFileChange(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // Check file size (2MB limit)
+                if (file.size > 2 * 1024 * 1024) {
+                    this.$toast().error('File size must be less than 2MB');
+                    event.target.value = '';
+                    this.reductionFile = null;
+                    return;
+                }
+
+                // Check file type
+                const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                if (!allowedTypes.includes(file.type)) {
+                    this.$toast().error('Please select a valid file type (PDF, DOC, or DOCX)');
+                    event.target.value = '';
+                    this.reductionFile = null;
+                    return;
+                }
+
+                this.reductionFile = file;
+            }
+        },
+        // Submit doctor decision on reduction request
+        async submitDecision(request) {
+            if (!request.decision) {
+                this.$toast().error('Please select a decision');
+                return;
+            }
+
+                            try {
+                    const response = await this.$inertia.put(
+                        route('panel.user.cases.reduction-requests.update-decision', {
+                            case: this.caseDetails.case_id,
+                            reductionRequest: request.id
+                        }),
+                        {
+                            doctor_decision: request.decision,
+                            counter_offer: request.counter_offer || null,
+                            notes: request.notes || null,
+                        }
+                    );
+
+                    // Inertia.js doesn't return a response object with status
+                    // If we reach here, the request was successful
+                    this.$toast().success('Decision submitted successfully');
+                    // Update the request status
+                    request.doctor_decision = request.decision;
+                    request.processing = false;
+                    
+                } catch (error) {
+                    this.$toast().error('Error submitting decision. Please try again.');
+                    console.error('Error:', error);
+                }
+        },
+
+        // Reset decision form
+        resetDecisionForm(request) {
+            request.decision = null;
+            request.counter_offer = null;
+            request.notes = '';
+        },
+
+        // Submit reduction request
+        async submitReduction() {
+            // Validate form
+            if (!this.reductionAmount || !this.reductionFile || !this.selectedReferralId) {
+                this.$toast().error('Please fill in all required fields');
+                return;
+            }
+
+            if (this.reductionAmount <= 0) {
+                this.$toast().error('Reduction amount must be greater than 0');
+                return;
+            }
+
+            if (this.isFormValid && this.selectedReferralId) {
+                const formData = new FormData();
+                formData.append("case_id", this.caseDetails.case_id);
+                formData.append("referral_id", this.selectedReferralId);
+                formData.append("amount", this.reductionAmount);
+                formData.append("referral_status", "reduction_request_sent");
+                if (this.reductionFile) {
+                    formData.append("file", this.reductionFile);
+                }
+
+                try {
+                    const response = await axios.post(
+                        route('panel.user.cases.reduction-requests.create', {
+                            case: this.caseDetails.case_id
+                        }),
+                        formData,
+                        {
+                            headers: { "Content-Type": "multipart/form-data" },
+                        }
+                    );
+                    this.$toast().info("Reduction request sent successfully.");
+                    this.closeReductionModal();
+                    this.$inertia.reload(); // Refresh the case data
+                } catch (error) {
+                    this.$toast().error("Error sending reduction request.");
+                    console.error("Error:", error.response.data);
+                }
+            }
+        },
         // Handle form submit
         async handleFormSubmit(data) {
             this.formData = data;
@@ -726,6 +1058,47 @@ export default {
             this.formData = data;
             await this.saveFormToDatabase(data, 'draft');
         },
+        // Add CPT code
+        addCptCode() {
+            this.form.cptCodes.push({
+                code: '',
+                value: ''
+            });
+        },
+
+        // Remove CPT code
+        removeCptCode(index) {
+            this.form.cptCodes.splice(index, 1);
+        },
+
+        // Get CPT code description
+        getCptCodeDescription(codeId) {
+            const cptCode = this.allCptCodes.find(cpt => cpt.id === codeId);
+            return cptCode ? `${cptCode.code} - ${cptCode.description}` : 'Unknown CPT Code';
+        },
+
+        // Save case billing information
+        async saveCase() {
+            this.form.processing = true;
+            try {
+                const response = await this.$inertia.put(
+                    route('panel.user.cases.updateBilling', {
+                        case: this.caseDetails.case_id
+                    }),
+                    {
+                        cpt_codes: JSON.stringify(this.form.cptCodes),
+                        billing_type: this.billingType
+                    }
+                );
+                this.$toast().success('Billing information saved successfully');
+            } catch (error) {
+                this.$toast().error('Error saving billing information');
+                console.error('Error:', error);
+            } finally {
+                this.form.processing = false;
+            }
+        },
+
         // Save form to database
         async saveFormToDatabase(data, status) {
             try {

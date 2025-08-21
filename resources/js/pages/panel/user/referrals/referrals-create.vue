@@ -17,12 +17,16 @@
         <x-referral-create-form
             :attorneys="attorneys"
             :doctors="doctors"
+            :physicians="physicians"
             :document-categories="documentCategories"
+            :medical-specialties="medicalSpecialties"
             :patients="patients"
             :referral-reasons="referralReasons"
             :referral-statuses="referralStatuses"
             :referral-states="referralStates"
             :states="states"
+            :icd-codes="icdCodes"
+            :CptCodes="CptCodes"
             :list-route="'panel.user.referrals.index'"
             :store-route="'panel.user.referrals.store'"
         />
@@ -50,9 +54,19 @@ export default {
             required: true,
             default: () => {},
         },
+        physicians: {
+            type: Object,
+            required: true,
+            default: () => {},
+        },
         documentCategories: {
             type: Object,
             required: false,
+            default: () => {},
+        },
+        medicalSpecialties: {
+            type: Object,
+            required: true,
             default: () => {},
         },
         patients: {
@@ -80,6 +94,19 @@ export default {
             required: false,
             default: () => {},
         },
+        icdCodes: {
+            type: Object,
+            required: false,
+            default: () => {},
+        },
+        CptCodes: {
+            type: Object,
+            required: false,
+            default: () => {},
+        },
+    },
+    created() {
+        // Component created successfully
     },
 };
 </script>

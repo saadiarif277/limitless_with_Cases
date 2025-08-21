@@ -11,7 +11,11 @@ class DestroyReferralRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        $user = auth()->user();
+        $userRole = $user->roles->first()->name;
+        
+        // Only attorneys, doctors, and case managers can delete referrals
+        return in_array($userRole, ['Attorney', 'Doctor', 'Case_manager']);
     }
 
     /**

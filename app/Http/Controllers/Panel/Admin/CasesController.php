@@ -820,4 +820,112 @@ class CasesController extends Controller
             throw new \Exception('Failed to generate PDF: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Save LOP (Letter of Protection) information for a case
+     */
+    public function saveLopInformation(Request $request, $case_id)
+    {
+        try {
+            // Find the case
+            $case = Cases::findOrFail($case_id);
+
+            // Validate the request
+            $validated = $request->validate([
+                'case_id' => 'required|exists:cases,case_id',
+                
+                // LOP Details
+                'lop_date' => 'nullable|date',
+                'lop_expiration_date' => 'nullable|date|after:lop_date',
+                'lop_status' => 'nullable|in:active,expired,revoked',
+                'lop_acknowledgment_received' => 'nullable|in:yes,no',
+                'lop_acknowledgment_date' => 'nullable|date',
+                'lop_verification_status' => 'nullable|in:verified,unverified',
+                'lop_verification_date' => 'nullable|date',
+                'lop_document' => 'nullable|file|mimes:pdf,doc,docx|max:10240', // 10MB max
+                
+                // Attorney/Law Firm Information
+                'law_firm_name' => 'nullable|string|max:255',
+                'attorney_contact_person' => 'nullable|string|max:255',
+                'attorney_phone' => 'nullable|string|max:20',
+                'attorney_fax' => 'nullable|string|max:20',
+                'attorney_bar_number' => 'nullable|string|max:50',
+                'attorney_file_number' => 'nullable|string|max:100',
+                
+                // Case/Litigation Information
+                'case_number' => 'nullable|string|max:100',
+                'court_jurisdiction' => 'nullable|string|max:255',
+                'insurance_company_name' => 'nullable|string|max:255',
+                'insurance_claim_number' => 'nullable|string|max:100',
+                'accident_date' => 'nullable|date',
+                'accident_description' => 'nullable|string',
+                
+                // Financial Information
+                'estimated_case_value' => 'nullable|numeric|min:0',
+                'contingency_percentage' => 'nullable|numeric|min:0|max:100',
+                'current_medical_specials' => 'nullable|numeric|min:0',
+                'outstanding_balance' => 'nullable|numeric|min:0',
+                
+                // Treatment Authorization
+                'authorized_treatment_types' => 'nullable|string',
+                'treatment_limitations' => 'nullable|string',
+                'authorization_expiration_date' => 'nullable|date',
+            ]);
+
+            // Handle file upload if present
+            if ($request->hasFile('lop_document')) {
+                $file = $request->file('lop_document');
+                $filename = 'lop_' . $case_id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('public/lop_documents', $filename);
+                $validated['lop_document'] = $path;
+            }
+
+            // Update the case with LOP information
+            $case->update([
+                'lop_date' => $validated['lop_date'] ?? null,
+                'lop_expiration_date' => $validated['lop_expiration_date'] ?? null,
+                'lop_status' => $validated['lop_status'] ?? 'active',
+                'lop_acknowledgment_received' => $validated['lop_acknowledgment_received'] ?? 'no',
+                'lop_acknowledgment_date' => $validated['lop_acknowledgment_date'] ?? null,
+                'lop_verification_status' => $validated['lop_verification_status'] ?? 'unverified',
+                'lop_verification_date' => $validated['lop_verification_date'] ?? null,
+                'lop_document' => $validated['lop_document'] ?? null,
+                
+                'law_firm_name' => $validated['law_firm_name'] ?? null,
+                'attorney_contact_person' => $validated['attorney_contact_person'] ?? null,
+                'attorney_phone' => $validated['attorney_phone'] ?? null,
+                'attorney_fax' => $validated['attorney_fax'] ?? null,
+                'attorney_bar_number' => $validated['attorney_bar_number'] ?? null,
+                'attorney_file_number' => $validated['attorney_file_number'] ?? null,
+                
+                'case_number' => $validated['case_number'] ?? null,
+                'court_jurisdiction' => $validated['court_jurisdiction'] ?? null,
+                'insurance_company_name' => $validated['insurance_company_name'] ?? null,
+                'insurance_claim_number' => $validated['insurance_claim_number'] ?? null,
+                'accident_date' => $validated['accident_date'] ?? null,
+                'accident_description' => $validated['accident_description'] ?? null,
+                
+                'estimated_case_value' => $validated['estimated_case_value'] ?? null,
+                'contingency_percentage' => $validated['contingency_percentage'] ?? null,
+                'current_medical_specials' => $validated['current_medical_specials'] ?? null,
+                'outstanding_balance' => $validated['outstanding_balance'] ?? null,
+                
+                'authorized_treatment_types' => $validated['authorized_treatment_types'] ?? null,
+                'treatment_limitations' => $validated['treatment_limitations'] ?? null,
+                'authorization_expiration_date' => $validated['authorization_expiration_date'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'LOP information updated successfully',
+                'case' => $case
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating LOP information: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

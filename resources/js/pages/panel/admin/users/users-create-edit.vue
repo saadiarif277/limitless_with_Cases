@@ -80,52 +80,89 @@
                     </v-content-body>
                 </v-card>
 
-                <v-card class="col-span-full">
-                    <v-content-body class="col-span-full grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-x-6 gap-y-4">
-                        <div class="col-span-full">
-                            <v-section-heading>
-                                <template #title>
-                                    Location Information
-                                </template>
-                            </v-section-heading>
-                        </div>
+                <v-card class="col-span-full overflow-visible relative isolate">
+                    <v-content-body class="col-span-full grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-x-6 gap-y-4 overflow-visible">        <!-- Section Heading -->
+        <div class="col-span-full">
+            <v-section-heading>
+                <template #title>
+                    Location Information
+                </template>
+            </v-section-heading>
+        </div>
 
-                        <v-form-group class="col-span-full md:col-span-3">
-                            <v-form-label>Address Line 1 </v-form-label>
-                            <v-form-input type="text" v-model="form.address_line_1" :error="form.errors.address_line_1" :disabled="form.processing" />
-                            <v-form-error v-if="form.errors.address_line_1">{{ form.errors.address_line_1 }}</v-form-error>
-                        </v-form-group>
+        <!-- Address Line 1 -->
+        <v-form-group class="col-span-full md:col-span-3">
+            <v-form-label>Address Line 1</v-form-label>
+            <v-form-input
+                type="text"
+                v-model="form.address_line_1"
+                :error="form.errors.address_line_1"
+                :disabled="form.processing"
+            />
+            <v-form-error v-if="form.errors.address_line_1">
+                {{ form.errors.address_line_1 }}
+            </v-form-error>
+        </v-form-group>
 
-                        <v-form-group class="col-span-full md:col-span-3">
-                            <v-form-label>Address Line 2</v-form-label>
-                            <v-form-input type="text" v-model="form.address_line_2" :error="form.errors.address_line_2" :disabled="form.processing" />
-                            <v-form-error v-if="form.errors.address_line_2">{{ form.errors.address_line_2 }}</v-form-error>
-                        </v-form-group>
+        <!-- Address Line 2 -->
+        <v-form-group class="col-span-full md:col-span-3">
+            <v-form-label>Address Line 2</v-form-label>
+            <v-form-input
+                type="text"
+                v-model="form.address_line_2"
+                :error="form.errors.address_line_2"
+                :disabled="form.processing"
+            />
+            <v-form-error v-if="form.errors.address_line_2">
+                {{ form.errors.address_line_2 }}
+            </v-form-error>
+        </v-form-group>
 
-                        <v-form-group class="col-span-full md:col-span-2">
-                            <v-form-label>City</v-form-label>
-                            <v-form-input type="text" v-model="form.city" :error="form.errors.city" :disabled="form.processing" />
-                            <v-form-error v-if="form.errors.city">{{ form.errors.city }}</v-form-error>
-                        </v-form-group>
+        <!-- City -->
+        <v-form-group class="col-span-full md:col-span-2">
+            <v-form-label>City</v-form-label>
+            <v-form-input
+                type="text"
+                v-model="form.city"
+                :error="form.errors.city"
+                :disabled="form.processing"
+            />
+            <v-form-error v-if="form.errors.city">
+                {{ form.errors.city }}
+            </v-form-error>
+        </v-form-group>
 
-                        <v-form-group class="col-span-full md:col-span-2">
-                            <v-form-label>State</v-form-label>
-                            <v-form-select
-                                :options="states.data.map((state) => ({ label: state.name, value: state.state_id }))"
-                                :error="form.errors.state_id"
-                                :disabled="form.processing"
-                                v-model="form.state_id"
-                            />
-                            <v-form-error v-if="form.errors.state_id">{{ form.errors.state_id }}</v-form-error>
-                        </v-form-group>
+        <!-- State (Dropdown Fix Applied) -->
+        <v-form-group class="col-span-full md:col-span-2 overflow-visible relative isolate">
+            <v-form-label>State</v-form-label>
+            <v-form-select
+                :options="states.data.map((state) => ({ label: state.name, value: state.state_id }))"
+                :error="form.errors.state_id"
+                :disabled="form.processing"
+                v-model="form.state_id"
+                class="relative z-[9999]"
+                dropdown-class="!fixed z-[9999] min-w-[300px]"
+            />
+            <v-form-error v-if="form.errors.state_id">
+                {{ form.errors.state_id }}
+            </v-form-error>
+        </v-form-group>
 
-                        <v-form-group class="col-span-full md:col-span-2">
-                            <v-form-label>Zip Code</v-form-label>
-                            <v-form-input type="text" v-model="form.zip_code" :error="form.errors.zip_code" :disabled="form.processing" />
-                            <v-form-error v-if="form.errors.zip_code">{{ form.errors.zip_code }}</v-form-error>
-                        </v-form-group>
-                    </v-content-body>
-                </v-card>
+        <!-- Zip Code -->
+        <v-form-group class="col-span-full md:col-span-2">
+            <v-form-label>Zip Code</v-form-label>
+            <v-form-input
+                type="text"
+                v-model="form.zip_code"
+                :error="form.errors.zip_code"
+                :disabled="form.processing"
+            />
+            <v-form-error v-if="form.errors.zip_code">
+                {{ form.errors.zip_code }}
+            </v-form-error>
+        </v-form-group>
+    </v-content-body>
+</v-card>
 
                 <v-card class="col-span-full">
                     <v-content-body class="col-span-full grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-x-6 gap-y-4">
@@ -153,13 +190,13 @@
                         </v-form-group>
 
                         <v-form-group>
-                            <v-form-label>Height</v-form-label>
+                            <v-form-label>Height (Meters)</v-form-label>
                             <v-form-input type="text" v-model="form.height" :error="form.errors.height" :disabled="form.processing" />
                             <v-form-error v-if="form.errors.height">{{ form.errors.height }}</v-form-error>
                         </v-form-group>
 
                         <v-form-group>
-                            <v-form-label>Weight</v-form-label>
+                            <v-form-label>Weight (Kgs)</v-form-label>
                             <v-form-input type="text" v-model="form.weight" :error="form.errors.weight" :disabled="form.processing" />
                             <v-form-error v-if="form.errors.weight">{{ form.errors.weight }}</v-form-error>
                         </v-form-group>
@@ -181,7 +218,7 @@
                             <v-form-input type="password" v-model="form.password" :error="form.errors.password" :disabled="form.processing" />
                             <v-form-error v-if="form.errors.password">{{ form.errors.password }}</v-form-error>
                         </v-form-group>
-                        
+
                         <v-form-group>
                             <v-form-label>Password Confirmation</v-form-label>
                             <v-form-input type="password" v-model="form.password_confirmation" :error="form.errors.password_confirmation" :disabled="form.processing" />
@@ -199,7 +236,7 @@
                                 />
                                 <v-form-error v-if="form.errors.law_firm_id">{{ form.errors.law_firm_id }}</v-form-error>
                             </v-form-group>
-                            
+
                             <v-form-group>
                                 <v-form-label>Medical Specialty</v-form-label>
                                 <v-form-select
@@ -318,7 +355,7 @@ export default {
                 city: "",
                 state_id: "",
                 zip_code: "",
-            
+
                 // Personal Health Information
                 gender: "",
                 height: "",
@@ -353,7 +390,7 @@ export default {
                 this.form.city = value.data.city;
                 this.form.state_id = value.data.state_id;
                 this.form.zip_code = value.data.zip_code;
-            
+
                 // Personal Health Information
                 this.form.gender = value.data.gender;
                 this.form.height = value.data.height;
@@ -371,7 +408,7 @@ export default {
     methods: {
         submitForm() {
             this.form.clearErrors();
-            
+
             if (this.user && this.user.data && this.user.data.user_id) {
                 this.updateRequest();
             } else {

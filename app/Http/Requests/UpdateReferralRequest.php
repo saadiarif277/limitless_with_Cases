@@ -12,7 +12,11 @@ class UpdateReferralRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        $user = auth()->user();
+        $userRole = $user->roles->first()->name;
+
+        // Only attorneys, doctors, and case managers can update referrals
+        return in_array($userRole, ['Attorney', 'Doctor', 'Case_manager']);
     }
 
     /**
@@ -50,5 +54,62 @@ class UpdateReferralRequest extends FormRequest
         $this->merge([
             'documents' => $documents
         ]);
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $user = auth()->user();
+            $userRole = $user->roles->first()->name;
+
+            if ($this->has('documents') && is_array($this->documents)) {
+                foreach ($this->documents as $documentTypeId => $document) {
+                    if (!$document) continue;
+
+                    $documentType = DocumentType::find($documentTypeId);
+                    if (!$documentType) continue;
+
+                    // Check if user has permission to upload this document type
+                    $canUpload = $this->canUserUploadDocumentType($userRole, $documentType);
+
+                    if (!$canUpload) {
+                        $validator->errors()->add(
+                            "documents.{$documentTypeId}",
+                            "You don't have permission to upload {$documentType->name} documents."
+                        );
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Check if user can upload a specific document type based on role
+     */
+    private function canUserUploadDocumentType(string $userRole, DocumentType $documentType): bool
+    {
+        // System-generated documents cannot be uploaded
+        if ($documentType->is_generated) {
+            return false;
+        }
+
+        // Role-based permissions
+        switch ($userRole) {
+            case 'Doctor':
+                return $documentType->document_category_id == \App\Models\DocumentCategory::MEDICAL;
+
+            case 'Attorney':
+                return $documentType->document_category_id == \App\Models\DocumentCategory::FINANCIAL;
+
+            case 'Admin':
+            case 'Case_manager':
+                return true;
+
+            default:
+                return false;
+        }
     }
 }

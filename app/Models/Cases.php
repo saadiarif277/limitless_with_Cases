@@ -28,6 +28,43 @@ class Cases extends Model
         'reduction_accepted',
         'is_closed',
         'closed_at',
+        
+        // LOP Fields
+        'lop_date',
+        'lop_expiration_date',
+        'lop_status',
+        'lop_acknowledgment_received',
+        'lop_acknowledgment_date',
+        'lop_verification_status',
+        'lop_verification_date',
+        'lop_document',
+        
+        // Attorney/Law Firm Information
+        'law_firm_name',
+        'attorney_contact_person',
+        'attorney_phone',
+        'attorney_fax',
+        'attorney_bar_number',
+        'attorney_file_number',
+        
+        // Case/Litigation Information
+        'case_number',
+        'court_jurisdiction',
+        'insurance_company_name',
+        'insurance_claim_number',
+        'accident_date',
+        'accident_description',
+        
+        // Financial Information
+        'estimated_case_value',
+        'contingency_percentage',
+        'current_medical_specials',
+        'outstanding_balance',
+        
+        // Treatment Authorization
+        'authorized_treatment_types',
+        'treatment_limitations',
+        'authorization_expiration_date',
     ];
 
     /**
@@ -76,6 +113,39 @@ class Cases extends Model
         $additionalReferrals = Referral::whereIn('referral_id', explode(',', $this->referral_ids))->get();
 
         return collect([$primaryReferral])->merge($additionalReferrals)->filter();
+    }
+
+    /**
+     * Get reduction requests for this case.
+     */
+    public function reductionRequests()
+    {
+        return $this->hasMany(ReductionRequest::class, 'case_id', 'case_id');
+    }
+
+    /**
+     * Create reduction requests for all referrals in this case.
+     */
+    public function createReductionRequests()
+    {
+        if (!$this->reduction_amount || !$this->reduction_requested) {
+            return;
+        }
+
+        $referrals = $this->referrals();
+        
+        foreach ($referrals as $referral) {
+            if ($referral) {
+                ReductionRequest::create([
+                    'case_id' => $this->case_id,
+                    'referral_id' => $referral->referral_id,
+                    'amount' => $this->reduction_amount,
+                    'referral_status' => 'pending',
+                    'doctor_decision' => 'pending',
+                    'notes' => $this->attorney_notes,
+                ]);
+            }
+        }
     }
 
     /**

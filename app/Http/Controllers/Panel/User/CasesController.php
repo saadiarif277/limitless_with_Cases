@@ -259,6 +259,8 @@ class CasesController extends Controller
                     'policy_limit' => 'required|numeric|min:0',
                     'pip_coverage' => 'required|numeric|min:0',
                     'commercial_case' => 'required|boolean',
+                    'reduction_amount' => 'nullable|numeric|min:0',
+                    'reduction_notes' => 'nullable|string|max:1000',
                 ];
             } else if ($userRole === 'Doctor') {
                 $roleRules = [
@@ -292,6 +294,15 @@ class CasesController extends Controller
                     'pip_coverage' => $request->input('pip_coverage'),
                     'commercial_case' => $request->input('commercial_case', false)
                 ]);
+
+                // Handle reduction fields
+                if ($request->filled('reduction_amount')) {
+                    $validatedData['reduction_amount'] = $request->input('reduction_amount');
+                    $validatedData['reduction_requested'] = true;
+                }
+                if ($request->filled('reduction_notes')) {
+                    $validatedData['attorney_notes'] = $request->input('reduction_notes');
+                }
             } else if ($userRole === 'Doctor') {
                 $validatedData['piloting_physician_id'] = $user->user_id;
 
@@ -329,6 +340,11 @@ class CasesController extends Controller
             // Create the case
             $case = Cases::create($validatedData);
 
+            // Create reduction requests if reduction amount is specified
+            if ($userRole === 'Attorney' && $request->filled('reduction_amount')) {
+                $case->createReductionRequests();
+            }
+
             return redirect()
                 ->route('panel.user.cases.create')
                 ->with('success', 'Case created successfully!');
@@ -351,13 +367,8 @@ class CasesController extends Controller
         $user = $request->user();
         $role = $user->roles->first()->name;
 
-        // Check if user has permission to view the case
-        if (!$this->canViewCase($user, $case)) {
-            abort(403, 'You do not have permission to view this case.');
-        }
-
         // Load case relationships
-        $case->load(['patient', 'attorney', 'pilotingPhysician']);
+        $case->load(['patient', 'attorney', 'pilotingPhysician', 'reductionRequests']);
 
         // Get referrals based on user role
         $referrals = $this->getReferrals($user, $case);
@@ -382,12 +393,16 @@ class CasesController extends Controller
             }
         }
 
+        // Get reduction requests for the case
+        $reductionRequests = $case->reductionRequests()->with(['referral.patientUser', 'referral.attorneyUser'])->get();
+
         return Inertia::render('panel/user/cases/case-view', [
             'caseDetails' => $caseData,
             'userRole' => $role,
             'userId' => $user->id,
             'referrals' => $referrals,
             'allCptCodes' => $allCptCodes,
+            'reductionRequests' => $reductionRequests,
         ]);
     }
 
@@ -399,27 +414,25 @@ class CasesController extends Controller
         $role = strtolower($user->roles->first()->name);
         $userId = auth()->id();
 
-        Log::info("role: " . $role);
-        Log::info("userId: " . $userId);
-        Log::info("case->piloting_physician_id: " . $case->piloting_physician_id);
-        Log::info("case->attorney_id: " . $case->attorney_id);
-
         switch ($role) {
             case 'attorney':
-                Log::info("User " . $userId . " is an attorney");
-                return $case->attorney_id == $userId;
             case 'case_manager':
-                Log::info("User " . $userId . " is a case manager");
+                // Attorneys and case managers can view cases they own
                 return $case->attorney_id == $userId;
             case 'doctor':
-                Log::info("User " . $userId . " is a doctor");
+                // Doctors can view cases where they are the piloting physician
                 return $case->piloting_physician_id == $userId;
             case 'patient':
-                Log::info("User " . $userId . " is a patient");
+                // Patients can view their own cases
                 return $case->patient_id == $userId;
+            case 'administrator':
+                // Administrators can view all cases
+                return true;
             default:
-                Log::info("User " . $userId . " is in default case");
-                return false;
+                // For other roles, check if they have any relationship to the case
+                return $case->attorney_id == $userId ||
+                       $case->piloting_physician_id == $userId ||
+                       $case->patient_id == $userId;
         }
     }
 
@@ -471,26 +484,12 @@ class CasesController extends Controller
 
         Log::info("Referral IDs for case: " . json_encode($referralIds));
 
-        // Doctors can see referrals they created or are assigned to
-        if ($role === 'doctor') {
-            $referrals = Referral::whereIn('referral_id', $referralIds)
-                               ->where(function($query) use ($userId) {
-                                   $query->where('doctor_user_id', $userId)
-                                         ->orWhere('source_user_id', $userId);
-                               })
-
-                               ->orderBy('created_at', 'desc')
-                               ->get()
-                               ->toArray();
-        }
-        // Attorneys and case managers can see all referrals
-        elseif (in_array($role, ['attorney', 'case_manager'])) {
-            $referrals = Referral::whereIn('referral_id', $referralIds)
-
-                               ->orderBy('created_at', 'desc')
-                               ->get()
-                               ->toArray();
-        }
+        // All users can see all referrals for the case
+        $referrals = Referral::whereIn('referral_id', $referralIds)
+                           ->with(['reductionRequests', 'patientUser', 'attorneyUser', 'doctorUser'])
+                           ->orderBy('created_at', 'desc')
+                           ->get()
+                           ->toArray();
 
         Log::info("Found referrals: " . json_encode($referrals));
         return $referrals;
@@ -562,6 +561,116 @@ class CasesController extends Controller
                 return false;
         }
     }
+
+    /**
+     * Create a reduction request for a referral
+     */
+    public function createReductionRequest(Request $request, Cases $case)
+    {
+        $user = $request->user();
+        $role = $user->roles->first()->name;
+
+        // Only attorneys and case managers can create reduction requests
+        if (!in_array($role, ['Attorney', 'Case_manager'])) {
+            abort(403, 'Only attorneys and case managers can create reduction requests.');
+        }
+
+        $validated = $request->validate([
+            'referral_id' => 'required|exists:referrals,referral_id',
+            'amount' => 'required|numeric|min:0',
+            'file' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        // Store the uploaded file
+        $filePath = null;
+        if ($request->hasFile('file')) {
+            $filePath = $request->file('file')->store('reduction_files', 'public');
+        }
+
+        // Create the reduction request
+        $reductionRequest = \App\Models\ReductionRequest::create([
+            'case_id' => $case->case_id,
+            'referral_id' => $validated['referral_id'],
+            'amount' => $validated['amount'],
+            'file_path' => $filePath,
+            'referral_status' => 'reduction_request_sent',
+            'doctor_decision' => 'pending',
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        // Update referral status
+        $referral = \App\Models\Referral::find($validated['referral_id']);
+        $referral->update(['referral_status_id' => 5]); // Assuming 5 is "Reduction Request Sent"
+
+        return response()->json([
+            'message' => 'Reduction request created successfully',
+            'data' => $reductionRequest,
+        ], 201);
+    }
+
+    /**
+     * Update doctor's decision on a reduction request
+     */
+    public function updateReductionDecision(Request $request, Cases $case, $reductionRequestId)
+    {
+        $user = $request->user();
+        $role = $user->roles->first()->name;
+
+        // Debug logging
+        \Log::info('User attempting to update reduction decision', [
+            'user_id' => $user->id,
+            'user_role' => $role,
+            'case_id' => $case->case_id,
+            'reduction_request_id' => $reductionRequestId
+        ]);
+
+        // Only doctors can update reduction decisions
+        if ($role !== 'Doctor') {
+            abort(403, 'Only doctors can update reduction decisions. Current role: ' . $role);
+        }
+
+        $reductionRequest = \App\Models\ReductionRequest::with(['referral'])->findOrFail($reductionRequestId);
+
+        // Debug logging for reduction request
+        \Log::info('Reduction request details', [
+            'reduction_request' => $reductionRequest->toArray(),
+            'referral_doctor_id' => $reductionRequest->referral->doctor_user_id ?? 'null',
+            'user_id' => $user->id
+        ]);
+
+        // Verify the doctor owns this referral
+        if ($reductionRequest->referral->doctor_user_id != $user->id) {
+            abort(403, 'You can only respond to reduction requests for your own referrals. Referral doctor ID: ' . $reductionRequest->referral->doctor_user_id . ', Your ID: ' . $user->id);
+        }
+
+        $validated = $request->validate([
+            'doctor_decision' => 'required|in:accepted,rejected',
+            'counter_offer' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $reductionRequest->update([
+            'doctor_decision' => $validated['doctor_decision'],
+            'counter_offer' => $validated['counter_offer'],
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        // Update referral status based on decision
+        $referral = $reductionRequest->referral;
+        if ($validated['doctor_decision'] === 'accepted') {
+            $referral->update(['referral_status_id' => 6]); // Assuming 6 is "Reduction Accepted"
+        } elseif ($validated['doctor_decision'] === 'rejected') {
+            $referral->update(['referral_status_id' => 7]); // Assuming 7 is "Reduction Rejected"
+        }
+
+        return response()->json([
+            'message' => 'Reduction decision updated successfully',
+            'data' => $reductionRequest->fresh(),
+        ]);
+    }
+
+
 
     /**
      * Update the specified resource in storage.
@@ -641,25 +750,21 @@ class CasesController extends Controller
     public function updateBilling(Request $request, Cases $case)
     {
         $user = $request->user();
+        $role = $user->roles->first()->name;
 
-        // Check if user has permission to update billing
-        if (!$this->canViewCase($user, $case)) {
-            abort(403, 'You do not have permission to update this case.');
+        // Only doctors can update billing information
+        if ($role !== 'Doctor') {
+            abort(403, 'Only doctors can update billing information.');
         }
 
         // Validate the request data
         $validated = $request->validate([
-            'billing_type' => 'required|in:Insurance,LOP',
-            'cpt_codes' => 'required|json',
-            'is_cms1500_generated' => 'required|boolean',
+            'billing_type' => 'nullable|in:Insurance,LOP',
+            'cpt_codes' => 'nullable|string',
         ]);
 
         // Update the case
-        $case->update([
-            'billing_type' => $validated['billing_type'],
-            'cpt_codes' => $validated['cpt_codes'],
-            'is_cms1500_generated' => $validated['is_cms1500_generated'],
-        ]);
+        $case->update($validated);
 
         return response()->json([
             'success' => true,

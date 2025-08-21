@@ -257,6 +257,45 @@
                 </v-content-body>
             </div>
 
+            <!-- Attorney-specific Reduction Section -->
+            <div v-if="userRole === 'Attorney'">
+                <v-content-body class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                    <!-- Reduction Amount -->
+                    <v-form-group>
+                        <v-form-label>Reduction Amount Requested</v-form-label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm">$</span>
+                            </div>
+                            <input
+                                type="number"
+                                v-model="form.reduction_amount"
+                                step="0.01"
+                                min="0"
+                                class="pl-7 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                placeholder="0.00"
+                            />
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Amount you're requesting to be reduced from the doctor's bill
+                        </p>
+                        <v-form-error v-if="form.errors.reduction_amount">{{ form.errors.reduction_amount }}</v-form-error>
+                    </v-form-group>
+
+                    <!-- Reduction Notes -->
+                    <v-form-group>
+                        <v-form-label>Reduction Notes</v-form-label>
+                        <textarea
+                            v-model="form.reduction_notes"
+                            rows="3"
+                            class="block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="Explain why you're requesting this reduction..."
+                        ></textarea>
+                        <v-form-error v-if="form.errors.reduction_notes">{{ form.errors.reduction_notes }}</v-form-error>
+                    </v-form-group>
+                </v-content-body>
+            </div>
+
             <!-- Submit Button -->
             <div class="text-right mt-4">
                 <v-button color="primary" dark type="submit">Create Case</v-button>
@@ -308,7 +347,10 @@ export default {
                 // Attorney-specific fields
                 policy_limit: this.userRole === 'Attorney' ? "" : null,
                 pip_coverage: this.userRole === 'Attorney' ? "" : null,
-                commercial_case: this.userRole === 'Attorney' ? false : null
+                commercial_case: this.userRole === 'Attorney' ? false : null,
+                // Reduction fields for attorneys
+                reduction_amount: this.userRole === 'Attorney' ? null : null,
+                reduction_notes: this.userRole === 'Attorney' ? "" : null
             }),
             selectedCptCodes: [],
             selectedReferrals: []

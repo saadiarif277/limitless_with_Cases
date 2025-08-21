@@ -1,3 +1,14 @@
+<!--
+    Referral Edit Form Component
+
+    This component handles editing referrals with role-based document access:
+    - Admin: Can view and upload all document types
+    - Doctor: Can view medical, referral, and general documents; can upload medical and referral documents
+    - Attorney/Case Manager: Can view legal, referral, and general documents; can upload legal and referral documents
+    - Other roles: Limited access based on default permissions
+
+    The user's role is displayed in the Document Information section header.
+-->
 <template>
     <v-form class="h-full" @submit.prevent="submitForm">
         <div class="h-full divide-y divide-gray-200 space-y-12">
@@ -225,12 +236,13 @@
                                 </svg>
 
                                 <span class="text-primary-500">Document</span> Information
+                                <span class="text-sm text-gray-500">({{ currentUserRole }})</span>
                             </div>
                         </template>
                     </v-section-heading>
                 </v-content-body>
 
-                <v-content-body>
+                                <v-content-body>
                     <div class="grid grid-cols-1 gap-4">
                         <template v-for="(documentCategory, documentCategoryIndex) in documentCategories.data" :key="'documentCategory_' + documentCategoryIndex">
                             <template v-if="documentCategory.document_types && documentCategory.document_types.length">
@@ -241,8 +253,8 @@
                                         </template>
                                     </v-section-heading>
 
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                                        <template v-for="(documentType, documentTypeIndex) in documentCategory.document_types" :key="'documentType_' + documentTypeIndex">
+                                                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        <template v-for="(documentType, documentTypeIndex) in documentCategory.document_types.filter(dt => canViewDocumentType(dt))" :key="'documentType_' + documentTypeIndex">
                                             <v-card>
                                                 <v-content-body class="flex flex-col divide-y divide-gray-200">
                                                     <v-form-group class="pb-4">
@@ -260,14 +272,14 @@
 
                                                         <div class="py-2">
                                                             <template v-if="
-                                                                formDocuments[documentType.document_type_id] && 
+                                                                formDocuments[documentType.document_type_id] &&
                                                                 formDocuments[documentType.document_type_id].document_id
                                                             ">
                                                                 <a
                                                                     class="w-full text-center inline-flex items-center justify-center border rounded-md shadow-sm focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed    px-4 py-2.5 text-sm font-medium   border-gray-200 hover:border-gray-800 text-gray-500 bg-white hover:bg-gray-800 hover:text-white"
-                                                                    :href="route('panel.admin.documents.download', { 
-                                                                        document: formDocuments[documentType.document_type_id].document_id, 
-                                                                        _t: Date.now() 
+                                                                    :href="route('panel.admin.documents.download', {
+                                                                        document: formDocuments[documentType.document_type_id].document_id,
+                                                                        _t: Date.now()
                                                                     })"
                                                                     target="_blank"
                                                                 >
@@ -297,8 +309,12 @@
                                                                 --
                                                             </template>
 
+                                                            <template v-else-if="!canUploadDocumentType(documentType)">
+                                                                <span class="text-gray-500 italic">Upload Restricted for {{ currentUserRole }}</span>
+                                                            </template>
+
                                                             <template v-else-if="
-                                                                formDocuments[documentType.document_type_id] && 
+                                                                formDocuments[documentType.document_type_id] &&
                                                                 formDocuments[documentType.document_type_id].document_id
                                                             ">
                                                                 Replace Document
@@ -308,7 +324,7 @@
                                                                 Upload Document
                                                             </template>
 
-                                                            <template v-if="form.documents[documentType.document_type_id]">
+                                                            <template v-if="form.documents[documentType.document_type_id] && canUploadDocumentType(documentType)">
                                                                 <v-link href="#" @click.stop="form.documents[documentType.document_type_id] = undefined">
                                                                     <span class="text-red-500 uppercase">
                                                                         Cancel
@@ -318,8 +334,14 @@
                                                         </v-form-label>
 
                                                         <div class="overflow-hidden">
-                                                            <v-form-file v-model="form.documents[documentType.document_type_id]" :disabled="form.processing || documentType.is_generated" />
+                                                            <v-form-file v-model="form.documents[documentType.document_type_id]" :disabled="form.processing || documentType.is_generated || !canUploadDocumentType(documentType)" />
                                                         </div>
+
+                                                        <template v-if="!canUploadDocumentType(documentType) && !documentType.is_generated">
+                                                            <v-paragraph class="text-sm text-gray-500 italic mt-2">
+                                                                You don't have permission to upload this document type as a {{ currentUserRole }}.
+                                                            </v-paragraph>
+                                                        </template>
                                                     </v-form-group>
 
                                                     <v-form-group class="pt-4" v-else>
@@ -439,6 +461,11 @@ export default {
             required: false,
             default: () => "panel.admin.documents.destroy",
         },
+        userRole: {
+            type: String,
+            required: false,
+            default: () => null,
+        },
     },
     data() {
         return {
@@ -452,6 +479,17 @@ export default {
                 documents: {},
             }),
         };
+    },
+    computed: {
+        currentUserRole() {
+            // Use the prop if provided, otherwise get from auth
+            if (this.userRole) {
+                return this.userRole;
+            }
+            // Get the primary role from the user's roles array
+            const roles = this.$page.props.auth.roles || [];
+            return roles.length > 0 ? roles[0] : 'Unknown';
+        },
     },
     watch: {
         referral: {
@@ -482,7 +520,7 @@ export default {
             Object.keys(this.referral.data.documents).forEach((key) => {
                 const document = JSON.parse(JSON.stringify(this.referral.data.documents[key]));
                 documents[document.document_type_id] = document;
-                
+
                 this.form.documents[document.document_type_id] = "";
             });
 
@@ -492,10 +530,10 @@ export default {
         submitForm() {
             this.form.clearErrors();
 
-            
+
             Object.keys(this.form.documents).forEach((key) => {
                 const document = this.form.documents[key];
-                
+
                 if (!document) {
                     this.form.documents[key] = undefined;
                 }
@@ -527,6 +565,53 @@ export default {
                     });
                 },
             });
+        },
+                                canViewDocumentType(documentType) {
+            // Administrator can view all document types
+            if (this.currentUserRole === 'Administrator') {
+                return true;
+            }
+
+            // Get the category name from the document category relationship
+            // Based on the debug data, we need to find the category name from documentCategories.data
+            const category = this.documentCategories.data?.find(cat => cat.document_category_id === documentType.document_category_id);
+            const categoryName = category?.name;
+
+            // Doctor can view medical documents
+            if (this.currentUserRole === 'Doctor') {
+                return categoryName === 'Medical Documents';
+            }
+
+            // Attorney can view financial documents
+            if (this.currentUserRole === 'Attorney' || this.currentUserRole === 'Case_manager') {
+                return categoryName === 'Financial Documents';
+            }
+
+            // Default to true for other roles
+            return true;
+        },
+                canUploadDocumentType(documentType) {
+            // Administrator can upload all document types
+            if (this.currentUserRole === 'Administrator') {
+                return true;
+            }
+
+            // Get the category name from the document category relationship
+            const category = this.documentCategories.data?.find(cat => cat.document_category_id === documentType.document_category_id);
+            const categoryName = category?.name;
+
+            // Doctor can upload medical documents
+            if (this.currentUserRole === 'Doctor') {
+                return categoryName === 'Medical Documents';
+            }
+
+            // Attorney can upload financial documents
+            if (this.currentUserRole === 'Attorney' || this.currentUserRole === 'Case_manager') {
+                return categoryName === 'Financial Documents';
+            }
+
+            // Default to false for other roles
+            return false;
         },
     },
 };

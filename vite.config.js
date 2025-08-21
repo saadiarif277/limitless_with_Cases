@@ -17,4 +17,12 @@ export default defineConfig({
             },
         }),
     ],
+    // server: {
+    //     host: 'lop.med.exchange', // Bind to your domain
+    //     port: 5173,               // Ensure it's an open port
+    //     strictPort: true,
+    //     hmr: {
+    //       clientPort: 443,        // Required for Hot Module Replacement on Azure
+    //     }
+    //   }
 });
