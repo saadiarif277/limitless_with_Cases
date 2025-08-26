@@ -134,17 +134,15 @@ class ReferralController extends Controller
             'documentCategories' => DocumentCategoryResource::collection(
                 DocumentCategory::query()
                     ->with('documentTypes', function ($query) use ($request) {
-                        $state = State::find($request->get('state_id'));
-                        $documentTypeIds = $state
-                            ? $state->documentTypes->pluck('document_type_id')->toArray()
-                            : [];
+                        // For admin users, show all document types regardless of state
+                        // State filtering was too restrictive and causing issues
+                        // If state filtering is needed in the future, it should be implemented differently
 
-                        $query
-                            ->whereIn('document_types.document_type_id', $documentTypeIds)
-                            ->where('document_types.is_generated', false)
-                            ->where('document_types.is_permanent', true);
+                        // Only filter out generated documents
+                        $query->where('document_types.is_generated', false);
                     })
-                    ->whereHas('documentTypes')
+                    // Temporarily removed whereHas to debug the issue
+                    // ->whereHas('documentTypes')
                     ->orderBy('name')
                     ->get()
             ),
@@ -261,16 +259,12 @@ class ReferralController extends Controller
             'documentCategories' => DocumentCategoryResource::collection(
                 DocumentCategory::query()
                     ->with('documentTypes', function ($query) use ($referral) {
-                        $documentTypeIds = $referral
-                            ->state
-                            ->documentTypes
-                            ->pluck('document_type_id')
-                            ->toArray();
-
-                        $query
-                            ->whereIn('document_types.document_type_id', $documentTypeIds);
+                        // For admin users, show all document types regardless of state
+                        // State filtering was too restrictive and causing issues
+                        // If state filtering is needed in the future, it should be implemented differently
                     })
-                    ->whereHas('documentTypes')
+                    // Temporarily removed whereHas to debug the issue
+                    // ->whereHas('documentTypes')
                     ->orderBy('name')
                     ->get()
             ),

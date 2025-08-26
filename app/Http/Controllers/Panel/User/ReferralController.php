@@ -79,8 +79,8 @@ class ReferralController extends Controller
         $userRole = $user->roles->first()->name;
 
         // Check if user has permission to create referrals
-        if (!in_array($userRole, ['Attorney', 'Doctor', 'Case_manager'])) {
-            abort(403, 'Only attorneys, doctors, and case managers can create referrals.');
+        if (!in_array($userRole, ['Attorney', 'Doctor', 'Office Manager'])) {
+            abort(403, 'Only attorneys, doctors, and office managers can create referrals.');
         }
 
         $roles = $user->roles;
@@ -323,37 +323,59 @@ class ReferralController extends Controller
                 ),
                                                         'documentCategories' => [
                 'data' => (function() use ($userRole, $selectedStateId) {
+                    // Debug: Log the initial parameters
+                    \Log::info('Document Categories Debug - Initial', [
+                        'user_role' => $userRole,
+                        'selected_state_id' => $selectedStateId,
+                        'has_state' => !empty($selectedStateId)
+                    ]);
+
                     $query = DocumentCategory::query()
                         ->with(['documentTypes' => function ($query) use ($selectedStateId, $userRole) {
-                            // Show all document types for visibility
-                            if ($selectedStateId) {
-                                $state = State::find($selectedStateId);
-                                $documentTypeIds = $state
-                                    ? $state->documentTypes->pluck('document_type_id')->toArray()
-                                    : [];
+                            // For all roles, show all document types regardless of state
+                            // State filtering was too restrictive and causing issues
+                            // If state filtering is needed in the future, it should be implemented differently
 
-                                if (!empty($documentTypeIds)) {
-                                    $query->whereIn('document_types.document_type_id', $documentTypeIds);
-                                }
-                            }
+                            // Debug: Log the document types query
+                            \Log::info('Document Types Query Debug', [
+                                'user_role' => $userRole,
+                                'selected_state_id' => $selectedStateId,
+                                'query_sql' => $query->toSql()
+                            ]);
 
                             $query->addSelect([
                                 'document_types.*',
-                                // Add role-based upload permission flag
+                                // Add role-based upload permission flag - Fixed role names and permissions
                                 \DB::raw("CASE
                                     WHEN document_types.is_generated = 1 THEN 0
-                                    WHEN '{$userRole}' = 'Doctor' AND document_types.document_category_id = " . \App\Models\DocumentCategory::MEDICAL . " THEN 1
-                                    WHEN '{$userRole}' = 'Attorney' AND document_types.document_category_id = " . \App\Models\DocumentCategory::FINANCIAL . " THEN 1
-                                    WHEN '{$userRole}' = 'Admin' THEN 1
-                                    WHEN '{$userRole}' = 'Case_manager' THEN 1
+                                    WHEN '{$userRole}' = 'Doctor' THEN 1
+                                    WHEN '{$userRole}' = 'Attorney' THEN 1
+                                    WHEN '{$userRole}' = 'Administrator' THEN 1
+                                    WHEN '{$userRole}' = 'System' THEN 1
+                                    WHEN '{$userRole}' = 'Office Manager' THEN 1
                                     ELSE 0
                                 END as can_upload")
                             ]);
                         }])
-                        ->whereHas('documentTypes')
+                        // Temporarily removed whereHas to debug the issue
+                        // ->whereHas('documentTypes')
                         ->orderBy('name');
 
                     $result = $query->get();
+
+                    // Debug: Check raw database data
+                    \Log::info('Raw Database Check', [
+                        'total_document_categories' => \App\Models\DocumentCategory::count(),
+                        'total_document_types' => \App\Models\DocumentType::count(),
+                        'categories_with_whereHas' => $result->count(),
+                        'all_categories' => \App\Models\DocumentCategory::all()->map(function($cat) {
+                            return [
+                                'id' => $cat->document_category_id,
+                                'name' => $cat->name,
+                                'has_document_types' => $cat->documentTypes()->count()
+                            ];
+                        })->toArray()
+                    ]);
 
                     // Debug logging
                     \Log::info('Document Categories for User Role (Create)', [
@@ -372,6 +394,7 @@ class ReferralController extends Controller
                                         'category_id' => $type->document_category_id,
                                         'is_generated' => $type->is_generated,
                                         'is_permanent' => $type->is_permanent,
+                                        'can_upload' => $type->can_upload,
                                     ];
                                 })->toArray()
                             ];
@@ -465,8 +488,8 @@ class ReferralController extends Controller
             }
 
             // Check if user has permission to create referrals
-            if (!in_array($userRole, ['Attorney', 'Doctor', 'Case_manager'])) {
-                abort(403, 'Only attorneys, doctors, and case managers can create referrals.');
+            if (!in_array($userRole, ['Attorney', 'Doctor', 'Office Manager'])) {
+                abort(403, 'Only attorneys, doctors, and office managers can create referrals.');
             }
 
             // Get filtered data for the selected state
@@ -529,8 +552,8 @@ class ReferralController extends Controller
         $userRole = $user->roles->first()->name;
 
         // Check if user has permission to create referrals
-        if (!in_array($userRole, ['Attorney', 'Doctor', 'Case_manager'])) {
-            abort(403, 'Only attorneys, doctors, and case managers can create referrals.');
+        if (!in_array($userRole, ['Attorney', 'Doctor', 'Office Manager'])) {
+            abort(403, 'Only attorneys, doctors, and office managers can create referrals.');
         }
 
         $referral = $this->referralRepository->create($request);
@@ -600,28 +623,26 @@ class ReferralController extends Controller
                 'data' => DocumentCategoryResource::collection(
                     DocumentCategory::query()
                         ->with(['documentTypes' => function ($query) use ($referral, $userRole) {
-                            // Show all document types for visibility to both attorneys and doctors
-                            $documentTypeIds = $referral
-                                ->state
-                                ->documentTypes
-                                ->pluck('document_type_id')
-                                ->toArray();
+                            // For all roles, show all document types regardless of state
+                            // State filtering was too restrictive and causing issues
+                            // If state filtering is needed in the future, it should be implemented differently
 
-                            $query->whereIn('document_types.document_type_id', $documentTypeIds)
-                                  ->addSelect([
-                                      'document_types.*',
-                                      // Add role-based upload permission flag
-                                      \DB::raw("CASE
-                                          WHEN document_types.is_generated = 1 THEN 0
-                                          WHEN '{$userRole}' = 'Doctor' AND document_types.document_category_id = " . \App\Models\DocumentCategory::MEDICAL . " THEN 1
-                                          WHEN '{$userRole}' = 'Attorney' AND document_types.document_category_id = " . \App\Models\DocumentCategory::FINANCIAL . " THEN 1
-                                          WHEN '{$userRole}' = 'Admin' THEN 1
-                                          WHEN '{$userRole}' = 'Case_manager' THEN 1
-                                          ELSE 0
-                                      END as can_upload")
-                                  ]);
+                            $query->addSelect([
+                                'document_types.*',
+                                // Add role-based upload permission flag - Fixed role names and permissions
+                                \DB::raw("CASE
+                                    WHEN document_types.is_generated = 1 THEN 0
+                                    WHEN '{$userRole}' = 'Doctor' THEN 1
+                                    WHEN '{$userRole}' = 'Attorney' THEN 1
+                                    WHEN '{$userRole}' = 'Administrator' THEN 1
+                                    WHEN '{$userRole}' = 'System' THEN 1
+                                    WHEN '{$userRole}' = 'Office Manager' THEN 1
+                                    ELSE 0
+                                END as can_upload")
+                            ]);
                         }])
-                        ->whereHas('documentTypes')
+                        // Temporarily removed whereHas to debug the issue
+                        // ->whereHas('documentTypes')
                         ->orderBy('name')
                         ->get()
                 )
@@ -675,13 +696,13 @@ class ReferralController extends Controller
         $userRole = $user->roles->first()->name;
 
         // Check if user has permission to update this referral
-        if (!$this->canViewReferral($user, $referral)) {
-            abort(403, 'You do not have permission to update this referral.');
+        if (!in_array($userRole, ['Attorney', 'Doctor', 'Office Manager'])) {
+            abort(403, 'Only attorneys, doctors, and office managers can update referrals.');
         }
 
         // Only attorneys, doctors, and case managers can update referrals
-        if (!in_array($userRole, ['Attorney', 'Doctor', 'Case_manager'])) {
-            abort(403, 'Only attorneys, doctors, and case managers can update referrals.');
+        if (!in_array($userRole, ['Attorney', 'Doctor', 'Office Manager'])) {
+            abort(403, 'Only attorneys, doctors, and office managers can update referrals.');
         }
 
         $referral = $this->referralRepository->update($request, $referral);
@@ -705,8 +726,8 @@ class ReferralController extends Controller
         }
 
         // Only attorneys, doctors, and case managers can delete referrals
-        if (!in_array($userRole, ['Attorney', 'Doctor', 'Case_manager'])) {
-            abort(403, 'Only attorneys, doctors, and case managers can delete referrals.');
+        if (!in_array($userRole, ['Attorney', 'Doctor', 'Office Manager'])) {
+            abort(403, 'Only attorneys, doctors, and office managers can delete referrals.');
         }
 
         $referral->documents()->delete();
@@ -725,8 +746,8 @@ class ReferralController extends Controller
         return $referrals->filter(function ($referral) use ($role, $userId, $user) {
             switch ($role) {
                 case 'attorney':
-                case 'case_manager':
-                    // Attorneys and case managers can view referrals in their state
+                case 'office_manager':
+                    // Attorneys and office managers can view referrals in their state
                     return $referral->state_id == $user->state_id ||
                            ($user->lawFirm && $referral->state_id == $user->lawFirm->state_id);
                 case 'doctor':
@@ -753,8 +774,8 @@ class ReferralController extends Controller
 
         switch ($role) {
             case 'attorney':
-            case 'case_manager':
-                // Attorneys and case managers can view referrals in their state
+            case 'office_manager':
+                // Attorneys and office managers can view referrals in their state
                 return $referral->state_id == $user->state_id ||
                        ($user->lawFirm && $referral->state_id == $user->lawFirm->state_id);
             case 'doctor':
