@@ -117,6 +117,44 @@ class ReferralController extends Controller
         // Get the selected state (default to user's state if none selected)
         $selectedStateId = $request->get('state_id', $user->state_id);
 
+        // If still no state_id, try to get from user's law firm or clinic
+        if (!$selectedStateId) {
+            if ($userRole === 'Attorney' && $user->lawFirm) {
+                $selectedStateId = $user->lawFirm->state_id;
+            } elseif ($userRole === 'Doctor' && $user->clinics->count() > 0) {
+                $selectedStateId = $user->clinics->first()->state_id;
+            }
+        }
+
+        // Final fallback: if no state_id is available, get the first available state
+        if (!$selectedStateId) {
+            try {
+                $firstState = \App\Models\State::first();
+                if ($firstState) {
+                    $selectedStateId = $firstState->state_id;
+                    \Log::info('Using fallback state for user', [
+                        'user_id' => $user->user_id,
+                        'fallback_state_id' => $selectedStateId
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error getting fallback state', [
+                    'error' => $e->getMessage(),
+                    'user_id' => $user->user_id
+                ]);
+            }
+        }
+
+        // If still no state_id, log a critical error but continue
+        if (!$selectedStateId) {
+            \Log::critical('No state_id available for user after all fallbacks', [
+                'user_id' => $user->user_id,
+                'user_role' => $userRole,
+                'user_state_id' => $user->state_id,
+                'request_state_id' => $request->get('state_id')
+            ]);
+        }
+
         // Debug the selected state
         \Log::info('Referral Create - State Selection', [
             'selected_state_id' => $selectedStateId,
@@ -321,8 +359,7 @@ class ReferralController extends Controller
                         ->orderBy('name')
                         ->get()
                 ),
-                                                        'documentCategories' => [
-                'data' => (function() use ($userRole, $selectedStateId) {
+                'documentCategories' => (function() use ($userRole, $selectedStateId) {
                     // Debug: Log the initial parameters
                     \Log::info('Document Categories Debug - Initial', [
                         'user_role' => $userRole,
@@ -330,81 +367,111 @@ class ReferralController extends Controller
                         'has_state' => !empty($selectedStateId)
                     ]);
 
-                    $query = DocumentCategory::query()
-                        ->with(['documentTypes' => function ($query) use ($selectedStateId, $userRole) {
-                            // For all roles, show all document types regardless of state
-                            // State filtering was too restrictive and causing issues
-                            // If state filtering is needed in the future, it should be implemented differently
+                    try {
+                        $query = DocumentCategory::query()
+                            ->with(['documentTypes' => function ($query) use ($userRole) {
+                                // Role-based document filtering
+                                if ($userRole === 'Attorney') {
+                                    // Attorneys only see Letter of Protection documents (document_type_id = 3)
+                                    $query->where('document_types.document_type_id', \App\Models\DocumentType::LETTER_OF_PROTECTION);
+                                } elseif ($userRole === 'Doctor') {
+                                    // Doctors only see Medical documents (category ID 2)
+                                    $query->where('document_types.document_category_id', \App\Models\DocumentCategory::MEDICAL);
+                                }
+                                // Office Managers and Admins see all document types
 
-                            // Debug: Log the document types query
-                            \Log::info('Document Types Query Debug', [
-                                'user_role' => $userRole,
-                                'selected_state_id' => $selectedStateId,
-                                'query_sql' => $query->toSql()
+                                $query->addSelect([
+                                    'document_types.*',
+                                    // Add role-based upload permission flag
+                                    \DB::raw("CASE
+                                        WHEN document_types.is_generated = 1 THEN 0
+                                        WHEN '{$userRole}' = 'Doctor' THEN 1
+                                        WHEN '{$userRole}' = 'Attorney' THEN 1
+                                        WHEN '{$userRole}' = 'Administrator' THEN 1
+                                        WHEN '{$userRole}' = 'System' THEN 1
+                                        WHEN '{$userRole}' = 'Office Manager' THEN 1
+                                        ELSE 0
+                                    END as can_upload")
+                                ]);
+                            }])
+                            ->whereHas('documentTypes') // Only show categories that have document types
+                            ->orderBy('name');
+
+                        $result = $query->get();
+
+                        // Debug logging
+                        \Log::info('Document Categories for User Role (Create)', [
+                            'user_role' => $userRole,
+                            'selected_state_id' => $selectedStateId,
+                            'total_categories' => $result->count(),
+                            'categories_with_docs' => $result->map(function($cat) {
+                                return [
+                                    'id' => $cat->document_category_id,
+                                    'name' => $cat->name,
+                                    'document_types_count' => $cat->documentTypes->count(),
+                                    'document_types' => $cat->documentTypes->map(function($type) {
+                                        return [
+                                            'id' => $type->document_type_id,
+                                            'name' => $type->name,
+                                            'category_id' => $type->document_category_id,
+                                            'is_generated' => $type->is_generated,
+                                            'is_permanent' => $type->is_permanent,
+                                            'can_upload' => $type->can_upload,
+                                        ];
+                                    })->toArray()
+                                ];
+                            })->toArray()
+                        ]);
+
+                        return DocumentCategoryResource::collection($result);
+                    } catch (\Exception $e) {
+                        \Log::error('Error getting document categories', [
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                            'user_role' => $userRole,
+                            'selected_state_id' => $selectedStateId
+                        ]);
+
+                        // Fallback: return basic document categories with role-based filtering
+                        try {
+                            $fallbackCategories = DocumentCategory::query()
+                                ->with(['documentTypes' => function ($query) use ($userRole) {
+                                    // Role-based document filtering
+                                    if ($userRole === 'Attorney') {
+                                        // Attorneys only see Letter of Protection documents
+                                        $query->where('document_types.document_type_id', \App\Models\DocumentType::LETTER_OF_PROTECTION);
+                                    } elseif ($userRole === 'Doctor') {
+                                        // Doctors only see Medical documents
+                                        $query->where('document_types.document_category_id', \App\Models\DocumentCategory::MEDICAL);
+                                    }
+
+                                    $query->addSelect([
+                                        'document_types.*',
+                                        \DB::raw("CASE
+                                            WHEN document_types.is_generated = 1 THEN 0
+                                            WHEN '{$userRole}' = 'Doctor' THEN 1
+                                            WHEN '{$userRole}' = 'Attorney' THEN 1
+                                            WHEN '{$userRole}' = 'System' THEN 1
+                                            WHEN '{$userRole}' = 'Office Manager' THEN 1
+                                            ELSE 0
+                                        END as can_upload")
+                                    ]);
+                                }])
+                                ->whereHas('documentTypes')
+                                ->orderBy('name')
+                                ->get();
+
+                            return DocumentCategoryResource::collection($fallbackCategories);
+                        } catch (\Exception $fallbackError) {
+                            \Log::error('Fallback document categories also failed', [
+                                'error' => $fallbackError->getMessage()
                             ]);
 
-                            $query->addSelect([
-                                'document_types.*',
-                                // Add role-based upload permission flag - Fixed role names and permissions
-                                \DB::raw("CASE
-                                    WHEN document_types.is_generated = 1 THEN 0
-                                    WHEN '{$userRole}' = 'Doctor' THEN 1
-                                    WHEN '{$userRole}' = 'Attorney' THEN 1
-                                    WHEN '{$userRole}' = 'Administrator' THEN 1
-                                    WHEN '{$userRole}' = 'System' THEN 1
-                                    WHEN '{$userRole}' = 'Office Manager' THEN 1
-                                    ELSE 0
-                                END as can_upload")
-                            ]);
-                        }])
-                        // Temporarily removed whereHas to debug the issue
-                        // ->whereHas('documentTypes')
-                        ->orderBy('name');
-
-                    $result = $query->get();
-
-                    // Debug: Check raw database data
-                    \Log::info('Raw Database Check', [
-                        'total_document_categories' => \App\Models\DocumentCategory::count(),
-                        'total_document_types' => \App\Models\DocumentType::count(),
-                        'categories_with_whereHas' => $result->count(),
-                        'all_categories' => \App\Models\DocumentCategory::all()->map(function($cat) {
-                            return [
-                                'id' => $cat->document_category_id,
-                                'name' => $cat->name,
-                                'has_document_types' => $cat->documentTypes()->count()
-                            ];
-                        })->toArray()
-                    ]);
-
-                    // Debug logging
-                    \Log::info('Document Categories for User Role (Create)', [
-                        'user_role' => $userRole,
-                        'selected_state_id' => $selectedStateId,
-                        'total_categories' => $result->count(),
-                        'categories_with_docs' => $result->map(function($cat) {
-                            return [
-                                'id' => $cat->document_category_id,
-                                'name' => $cat->name,
-                                'document_types_count' => $cat->documentTypes->count(),
-                                'document_types' => $cat->documentTypes->map(function($type) {
-                                    return [
-                                        'id' => $type->document_type_id,
-                                        'name' => $type->name,
-                                        'category_id' => $type->document_category_id,
-                                        'is_generated' => $type->is_generated,
-                                        'is_permanent' => $type->is_permanent,
-                                        'can_upload' => $type->can_upload,
-                                    ];
-                                })->toArray()
-                            ];
-                        })->toArray()
-                    ]);
-
-                    return DocumentCategoryResource::collection($result);
-                })()
-            ],
-
+                            // Return empty collection as last resort
+                            return collect([]);
+                        }
+                    }
+                })(),
 
                 'medicalSpecialties' => \App\Http\Resources\MedicalSpecialtyResource::collection(
                     \App\Models\MedicalSpecialty::query()

@@ -134,15 +134,22 @@ class ReferralController extends Controller
             'documentCategories' => DocumentCategoryResource::collection(
                 DocumentCategory::query()
                     ->with('documentTypes', function ($query) use ($request) {
-                        // For admin users, show all document types regardless of state
-                        // State filtering was too restrictive and causing issues
-                        // If state filtering is needed in the future, it should be implemented differently
+                        // For admin users, show all document types but respect role-based filtering if specified
+                        $userRole = $request->user()?->roles?->first()?->name;
+
+                        if ($userRole === 'Attorney') {
+                            // Attorneys only see Letter of Protection documents
+                            $query->where('document_types.document_type_id', \App\Models\DocumentType::LETTER_OF_PROTECTION);
+                        } elseif ($userRole === 'Doctor') {
+                            // Doctors only see Medical documents
+                            $query->where('document_types.document_category_id', \App\Models\DocumentCategory::MEDICAL);
+                        }
+                        // Admin users see all document types
 
                         // Only filter out generated documents
                         $query->where('document_types.is_generated', false);
                     })
-                    // Temporarily removed whereHas to debug the issue
-                    // ->whereHas('documentTypes')
+                    ->whereHas('documentTypes')
                     ->orderBy('name')
                     ->get()
             ),

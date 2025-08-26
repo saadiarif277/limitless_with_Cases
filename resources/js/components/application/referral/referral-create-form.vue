@@ -509,6 +509,7 @@ export default {
                 this.form.closed_at = null;
             }
         },
+        // Method to submit the form
         submitForm() {
             // Validate form before submission
             const errors = this.validateForm();

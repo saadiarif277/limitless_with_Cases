@@ -16,7 +16,7 @@
             </v-section-heading>
             <div class="relative grid grid-cols-1 gap-4">
                 <!-- Removed state check restriction -->
-                <template v-for="(documentCategory, documentCategoryIndex) in documentCategories.data" :key="'documentCategory_' + documentCategoryIndex">
+                <template v-for="(documentCategory, documentCategoryIndex) in processedDocumentCategories" :key="'documentCategory_' + documentCategoryIndex">
                     <template v-if="documentCategory.document_types && documentCategory.document_types.length">
                         <div class="space-y-1">
                             <v-section-heading>
@@ -68,15 +68,23 @@
                 </template>
 
                 <!-- Show message if no document categories -->
-                <div v-if="!documentCategories.data || documentCategories.data.length === 0" class="text-center py-8">
+                <div v-if="!processedDocumentCategories || processedDocumentCategories.length === 0" class="text-center py-8">
                     <p class="text-gray-500">No document categories available for your role.</p>
+                    <p class="text-sm text-gray-400 mt-2">If you believe this is an error, please contact your administrator.</p>
+
+                    <!-- Debug information -->
+                    <div v-if="documentCategories" class="mt-4 p-4 bg-gray-100 rounded text-left text-xs">
+                        <p><strong>Debug Info:</strong></p>
+                        <p>documentCategories type: {{ typeof documentCategories }}</p>
+                        <p>documentCategories.data type: {{ typeof documentCategories.data }}</p>
+                        <p>documentCategories.data.data type: {{ typeof documentCategories.data?.data }}</p>
+                        <p>documentCategories.data.data length: {{ documentCategories.data?.data ? (Array.isArray(documentCategories.data.data) ? documentCategories.data.data.length : 'Not an array') : 'No nested data' }}</p>
+                        <p>documentCategories.data length: {{ documentCategories.data ? (Array.isArray(documentCategories.data) ? documentCategories.data.length : 'Not an array') : 'No data' }}</p>
+                        <p>Raw data: {{ JSON.stringify(documentCategories, null, 2) }}</p>
+                    </div>
                 </div>
             </div>
         </v-content-body>
-
-
-
-
     </div>
 </template>
 
@@ -128,6 +136,29 @@ export default {
             required: false,
             default: () => {},
         },
+    },
+    computed: {
+        // Process document categories - backend now handles role-based filtering
+        processedDocumentCategories() {
+            if (!this.documentCategories?.data) {
+                return [];
+            }
+
+            // Handle nested data structure: documentCategories.data.data
+            let categories = [];
+            if (this.documentCategories.data?.data && Array.isArray(this.documentCategories.data.data)) {
+                categories = this.documentCategories.data.data;
+            } else if (Array.isArray(this.documentCategories.data)) {
+                categories = this.documentCategories.data;
+            }
+
+            if (categories.length === 0) {
+                return [];
+            }
+
+            // Backend now handles role-based filtering, so just return the categories as-is
+            return categories;
+        }
     },
 };
 </script>
