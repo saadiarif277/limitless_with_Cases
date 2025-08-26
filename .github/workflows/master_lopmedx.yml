@@ -65,4 +65,4 @@ jobs:
           app-name: 'Medxchanged'
           slot-name: 'Production'
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_21DCBC885A944CA29D65A1B38CDB1D06 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
