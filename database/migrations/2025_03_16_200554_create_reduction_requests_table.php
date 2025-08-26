@@ -17,6 +17,7 @@ class CreateReductionRequestsTable extends Migration
             $table->string('referral_status')->default('pending'); // Status of the referral
             $table->string('doctor_decision')->default('pending'); // Doctor's decision (accepted, rejected, pending)
             $table->decimal('counter_offer', 10, 2)->nullable(); // Doctor's counter offer
+            $table->text('notes')->nullable(); // Notes and comments
             $table->timestamps();
 
             // Foreign key constraints
