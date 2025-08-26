@@ -33,7 +33,7 @@
 
                     <!-- Referrals - Only visible to Attorneys, Doctors, and Case Managers -->
                     <v-vertical-menu-item 
-                        v-if="$page.props.auth.roles.some(role => ['Attorney', 'Doctor', 'Case_manager'].includes(role))"
+                        v-if="$page.props.auth.user.roles.some(role => ['Attorney', 'Doctor', 'Case_manager'].includes(role.name))"
                         :href="route('panel.user.referrals.index')" 
                         @click="$emit('toggleSidebar')"
                     >
@@ -45,9 +45,9 @@
                         Referrals
                     </v-vertical-menu-item>
 
-                    <!-- Reduction Requests - Only visible to Doctors -->
+                    <!-- Reduction Requests - Visible to Attorneys and Doctors -->
                     <v-vertical-menu-item 
-                        v-if="$page.props.auth.roles.includes('Doctor')"
+                        v-if="$page.props.auth.user.roles.some(role => ['Doctor', 'Attorney'].includes(role.name))"
                         :href="route('panel.user.referrals.reduction-requests')" 
                         @click="$emit('toggleSidebar')"
                     >
@@ -59,7 +59,7 @@
 
                     <!-- Cases - Only visible to Attorneys, Doctors, and Case Managers -->
                     <v-vertical-menu-item 
-                        v-if="$page.props.auth.roles.some(role => ['Attorney', 'Doctor', 'Case_manager'].includes(role))"
+                        v-if="$page.props.auth.user.roles.some(role => ['Attorney', 'Doctor', 'Case_manager'].includes(role.name))"
                         :href="route('panel.user.cases.index')" 
                         @click="$emit('toggleSidebar')"
                     >
@@ -73,7 +73,7 @@
 
                     <!-- Request Funding - Only visible to Doctors -->
                     <v-vertical-menu-item
-                        v-if="$page.props.auth.roles.includes('Doctor')"
+                        v-if="$page.props.auth.user.roles.some(role => role.name === 'Doctor')"
                         :href="route('panel.user.funding.request')"
                         @click="$emit('toggleSidebar')"
                     >

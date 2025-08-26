@@ -96,6 +96,8 @@ Route::group(['middleware' => ['auth']], function() {
                 ->name('referrals.reduction-requests');
             Route::put('/referrals/reduction-requests/{reductionRequest}/decision', [\App\Http\Controllers\Panel\User\ReferralController::class, 'updateReductionDecision'])
                 ->name('referrals.update-reduction-decision');
+            Route::post('/referrals/reduction-requests', [\App\Http\Controllers\Panel\User\ReferralController::class, 'storeReductionRequest'])
+                ->name('referrals.store-reduction-request');
 
             // AJAX endpoint for getting filtered data by state
             Route::get('/referrals/data-by-state', [\App\Http\Controllers\Panel\User\ReferralController::class, 'getDataByState'])

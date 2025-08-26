@@ -380,21 +380,11 @@ class CasesController extends Controller
         $caseData = $case->toArray();
         $caseData['policy_limit_info'] = json_decode($case->policy_limit_info, true);
 
-        // Process referrals to include reduction request details
-        if (!empty($referrals)) {
-            foreach ($referrals as &$referral) {
-                if (isset($referral['reduction_requests']) && !empty($referral['reduction_requests'])) {
-                    foreach ($referral['reduction_requests'] as &$reductionRequest) {
-                        if (isset($reductionRequest['file_path']) && $reductionRequest['file_path']) {
-                            $reductionRequest['file_link'] = asset('storage/' . $reductionRequest['file_path']);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Get reduction requests for the case
-        $reductionRequests = $case->reductionRequests()->with(['referral.patientUser', 'referral.attorneyUser'])->get();
+        // Get reduction requests for the case (for the reduction-requests tab)
+        $reductionRequests = $case->reductionRequests()
+            ->with(['referral.patientUser', 'referral.attorneyUser', 'referral.doctorUser'])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return Inertia::render('panel/user/cases/case-view', [
             'caseDetails' => $caseData,
@@ -486,10 +476,37 @@ class CasesController extends Controller
 
         // All users can see all referrals for the case
         $referrals = Referral::whereIn('referral_id', $referralIds)
-                           ->with(['reductionRequests', 'patientUser', 'attorneyUser', 'doctorUser'])
+                           ->with(['patientUser', 'attorneyUser', 'doctorUser'])
                            ->orderBy('created_at', 'desc')
                            ->get()
                            ->toArray();
+
+        // Load reduction requests for each referral individually
+        if (!empty($referrals)) {
+            foreach ($referrals as &$referral) {
+                // Get reduction requests for this specific referral
+                $reductionRequests = \App\Models\ReductionRequest::where('referral_id', $referral['referral_id'])
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->toArray();
+                
+                $referral['reduction_requests'] = $reductionRequests;
+                
+                // Process reduction request details and file links
+                if (!empty($referral['reduction_requests'])) {
+                    foreach ($referral['reduction_requests'] as &$reductionRequest) {
+                        if (isset($reductionRequest['file_path']) && $reductionRequest['file_path']) {
+                            $reductionRequest['file_link'] = asset('storage/' . $reductionRequest['file_path']);
+                        }
+                        // Ensure all fields are properly set
+                        $reductionRequest['counter_offer'] = $reductionRequest['counter_offer'] ?? null;
+                        $reductionRequest['notes'] = $reductionRequest['notes'] ?? null;
+                        $reductionRequest['doctor_decision'] = $reductionRequest['doctor_decision'] ?? 'pending';
+                        $reductionRequest['referral_status'] = $reductionRequest['referral_status'] ?? 'pending';
+                    }
+                }
+            }
+        }
 
         Log::info("Found referrals: " . json_encode($referrals));
         return $referrals;

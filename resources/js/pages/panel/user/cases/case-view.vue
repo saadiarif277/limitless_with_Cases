@@ -303,26 +303,125 @@
                                 <!-- Display Reduction Request Details -->
                                 <div v-if="referral.reduction_requests && referral.reduction_requests.length > 0" class="mt-4">
                                     <v-heading :size="6" class="font-medium">Reduction Requests</v-heading>
-                                    <div v-for="reductionRequest in referral.reduction_requests" :key="reductionRequest.id" class="mt-2">
-                                        <v-paragraph>Amount: ${{ reductionRequest.amount }}</v-paragraph>
-                                        <v-paragraph class="mt-2">
-                                            Status:
-                                            <span :class="getStatusBadgeClass(reductionRequest.referral_status)">
-                                                {{ getStatusText(reductionRequest.referral_status) }}
-                                            </span>
-                                        </v-paragraph>
-                                        <v-paragraph class="mt-4">
-                                            Doctor Decision:
-                                            <span :class="getDoctorDecisionBadgeClass(reductionRequest.doctor_decision)">
-                                                {{ getDoctorDecisionText(reductionRequest.doctor_decision) }}
-                                            </span>
-                                        </v-paragraph>
-                                        <v-paragraph v-if="reductionRequest.counter_offer">
-                                            Counter Offer: ${{ reductionRequest.counter_offer }}
-                                        </v-paragraph>
-                                        <v-paragraph v-if="reductionRequest.file_path">
-                                            <a :href="reductionRequest.file_link" target="_blank" class="text-primary-500 hover:underline">Download File</a>
-                                        </v-paragraph>
+                                    <div v-for="reductionRequest in referral.reduction_requests" :key="reductionRequest.id" class="mt-3 p-4 bg-gray-50 rounded-lg border">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <div class="flex items-center gap-2 mb-2">
+                                                    <span class="text-sm font-medium text-gray-700">Request #{{ reductionRequest.id }}</span>
+                                                    <span :class="getStatusBadgeClass(reductionRequest.referral_status)" class="text-xs px-2 py-1 rounded-full">
+                                                        {{ getStatusText(reductionRequest.referral_status) }}
+                                                    </span>
+                                                </div>
+                                                <div class="space-y-1 text-sm text-gray-600">
+                                                    <div>
+                                                        <span class="font-medium">Requested Amount:</span>
+                                                        <span class="ml-2 text-lg font-semibold text-red-600">${{ reductionRequest.amount }}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="font-medium">Requested On:</span>
+                                                        <span class="ml-2">{{ formatDate(reductionRequest.created_at) }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2 mb-2">
+                                                    <span class="text-sm font-medium text-gray-700">Doctor Decision:</span>
+                                                    <span :class="getDoctorDecisionBadgeClass(reductionRequest.doctor_decision)" class="text-xs px-2 py-1 rounded-full">
+                                                        {{ getDoctorDecisionText(reductionRequest.doctor_decision) }}
+                                                    </span>
+                                                </div>
+                                                <div class="space-y-1 text-sm text-gray-600">
+                                                    <div v-if="reductionRequest.counter_offer">
+                                                        <span class="font-medium">Counter Offer:</span>
+                                                        <span class="ml-2 text-lg font-semibold text-blue-600">${{ reductionRequest.counter_offer }}</span>
+                                                    </div>
+                                                    <div v-if="reductionRequest.notes">
+                                                        <span class="font-medium">Notes:</span>
+                                                        <span class="ml-2">{{ reductionRequest.notes }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Supporting Document -->
+                                        <div v-if="reductionRequest.file_path" class="mt-3 pt-3 border-t border-gray-200">
+                                            <div class="flex items-center space-x-2">
+                                                <svg class="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+                                                </svg>
+                                                <a :href="reductionRequest.file_link" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm">
+                                                    View Supporting Document
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <!-- Doctor Response Form (if pending and user is doctor) -->
+                                        <div v-if="userRole === 'Doctor' && reductionRequest.doctor_decision === 'pending'" class="mt-4 pt-3 border-t border-gray-200">
+                                            <h5 class="text-sm font-medium text-gray-700 mb-3">Your Response</h5>
+                                            <form @submit.prevent="submitDecision(reductionRequest)" class="space-y-3">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Decision *</label>
+                                                    <div class="space-y-2">
+                                                        <label class="flex items-center">
+                                                            <input
+                                                                type="radio"
+                                                                v-model="reductionRequest.decision"
+                                                                value="accepted"
+                                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                                            >
+                                                            <span class="ml-2 text-sm text-gray-700">Accept Reduction</span>
+                                                        </label>
+                                                        <label class="flex items-center">
+                                                            <input
+                                                                type="radio"
+                                                                v-model="reductionRequest.decision"
+                                                                value="rejected"
+                                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                                            >
+                                                            <span class="ml-2 text-sm text-gray-700">Reject Reduction</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <div v-if="reductionRequest.decision === 'rejected'">
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Counter Offer (Optional)</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                            <span class="text-gray-500 sm:text-sm">$</span>
+                                                        </div>
+                                                        <input
+                                                            type="number"
+                                                            v-model="reductionRequest.counter_offer"
+                                                            step="0.01"
+                                                            min="0"
+                                                            class="pl-7 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                            placeholder="0.00"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                                                    <textarea
+                                                        v-model="reductionRequest.notes"
+                                                        rows="2"
+                                                        class="block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                        placeholder="Add any notes or comments..."
+                                                    ></textarea>
+                                                </div>
+
+                                                <div class="flex justify-end space-x-3">
+                                                    <button
+                                                        type="submit"
+                                                        :disabled="!reductionRequest.decision || reductionRequest.processing"
+                                                        class="px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        <span v-if="reductionRequest.processing">Processing...</span>
+                                                        <span v-else>Submit Decision</span>
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -848,73 +947,71 @@ export default {
         // Format date in a human-readable manner
         formatDate(dateString) {
             if (!dateString) return "N/A";
-
-            const date = new Date(dateString);
-            if (isNaN(date)) return "Invalid Date";
-
-            return new Intl.DateTimeFormat("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-            }).format(date);
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         },
         // Get status badge class
         getStatusBadgeClass(status) {
             switch (status) {
-                case "pending":
-                    return "bg-yellow-500 text-white px-2 py-1 rounded text-sm";
-                case "reduction_request_sent":
-                    return "bg-blue-500 text-white px-2 py-1 rounded text-sm";
-                case "accepted":
-                    return "bg-green-500 text-white px-2 py-1 rounded text-sm";
-                case "rejected":
-                    return "bg-red-500 text-white px-2 py-1 rounded text-sm";
+                case 'pending':
+                    return 'bg-yellow-100 text-yellow-800';
+                case 'reduction_request_sent':
+                    return 'bg-blue-100 text-blue-800';
+                case 'accepted':
+                    return 'bg-green-100 text-green-800';
+                case 'rejected':
+                    return 'bg-red-100 text-red-800';
                 default:
-                    return "bg-gray-500 text-white px-2 py-1 rounded text-sm";
+                    return 'bg-gray-100 text-gray-800';
             }
         },
+
         // Get status text
         getStatusText(status) {
             switch (status) {
-                case "pending":
-                    return "Pending";
-                case "reduction_request_sent":
-                    return "Reduction Request Sent";
-                case "accepted":
-                    return "Accepted";
-                case "rejected":
-                    return "Rejected";
+                case 'pending':
+                    return 'Pending';
+                case 'reduction_request_sent':
+                    return 'Request Sent';
+                case 'accepted':
+                    return 'Accepted';
+                case 'rejected':
+                    return 'Rejected';
                 default:
-                    return "Unknown";
+                    return 'Unknown Status';
             }
         },
+
         // Get doctor decision badge class
         getDoctorDecisionBadgeClass(decision) {
             switch (decision) {
-                case "pending":
-                    return "bg-yellow-500 text-white px-2 py-1 mb-2 rounded text-sm";
-                case "accepted":
-                    return "bg-green-500 text-white px-2 py-1 mb-2 rounded text-sm";
-                case "rejected":
-                    return "bg-red-500 text-white px-2 py-1 mb-2 rounded text-sm";
+                case 'pending':
+                    return 'bg-yellow-100 text-yellow-800';
+                case 'accepted':
+                    return 'bg-green-100 text-green-800';
+                case 'rejected':
+                    return 'bg-red-100 text-red-800';
                 default:
-                    return "bg-gray-500 text-white px-2 py-1 mb-2 rounded text-sm";
+                    return 'bg-gray-100 text-gray-800';
             }
         },
+
         // Get doctor decision text
         getDoctorDecisionText(decision) {
             switch (decision) {
-                case "pending":
-                    return "Pending";
-                case "accepted":
-                    return "Accepted";
-                case "rejected":
-                    return "Rejected";
+                case 'pending':
+                    return 'Pending';
+                case 'accepted':
+                    return 'Accepted';
+                case 'rejected':
+                    return 'Rejected';
                 default:
-                    return "Unknown";
+                    return 'Unknown Decision';
             }
         },
         // Mark referral as complete
@@ -967,36 +1064,44 @@ export default {
             }
         },
         // Submit doctor decision on reduction request
-        async submitDecision(request) {
-            if (!request.decision) {
+        async submitDecision(reductionRequest) {
+            if (!reductionRequest.decision) {
                 this.$toast().error('Please select a decision');
                 return;
             }
 
-                            try {
-                    const response = await this.$inertia.put(
-                        route('panel.user.cases.reduction-requests.update-decision', {
-                            case: this.caseDetails.case_id,
-                            reductionRequest: request.id
-                        }),
-                        {
-                            doctor_decision: request.decision,
-                            counter_offer: request.counter_offer || null,
-                            notes: request.notes || null,
-                        }
-                    );
+            // Set processing state
+            reductionRequest.processing = true;
 
-                    // Inertia.js doesn't return a response object with status
-                    // If we reach here, the request was successful
+            try {
+                const response = await this.$inertia.put(
+                    route('panel.user.cases.reduction-requests.update-decision', {
+                        case: this.caseDetails.case_id,
+                        reductionRequest: reductionRequest.id
+                    }),
+                    {
+                        doctor_decision: reductionRequest.decision,
+                        counter_offer: reductionRequest.counter_offer || null,
+                        notes: reductionRequest.notes || null,
+                    }
+                );
+
+                if (response.status === 200) {
                     this.$toast().success('Decision submitted successfully');
-                    // Update the request status
-                    request.doctor_decision = request.decision;
-                    request.processing = false;
-                    
-                } catch (error) {
-                    this.$toast().error('Error submitting decision. Please try again.');
-                    console.error('Error:', error);
+                    // Update the local state
+                    reductionRequest.doctor_decision = reductionRequest.decision;
+                    reductionRequest.processing = false;
+                    // Remove the form data
+                    reductionRequest.decision = null;
+                    reductionRequest.counter_offer = null;
+                    reductionRequest.notes = '';
                 }
+            } catch (error) {
+                this.$toast().error('Error submitting decision. Please try again.');
+                console.error('Error:', error);
+            } finally {
+                reductionRequest.processing = false;
+            }
         },
 
         // Reset decision form

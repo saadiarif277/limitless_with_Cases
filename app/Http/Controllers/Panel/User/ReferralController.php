@@ -859,30 +859,97 @@ class ReferralController extends Controller
     }
 
     /**
-     * Get reduction requests for the authenticated user (Doctor role).
+     * Get reduction requests for the authenticated user (Attorney or Doctor role).
      */
     public function reductionRequests(Request $request): Response
     {
         $user = auth()->user();
         $userRole = $user->roles->first()->name;
 
-        // Only doctors can view reduction requests
-        if ($userRole !== 'Doctor') {
-            abort(403, 'Only doctors can view reduction requests.');
+        // Only attorneys and doctors can view reduction requests
+        if (!in_array($userRole, ['Attorney', 'Doctor'])) {
+            abort(403, 'Only attorneys and doctors can view reduction requests.');
         }
 
         $reductionRequests = ReductionRequest::query()
-            ->with(['case', 'referral.patientUser', 'referral.attorneyUser'])
-            ->whereHas('referral', function ($query) use ($user) {
+            ->with(['case', 'referral.patientUser', 'referral.attorneyUser', 'referral.doctorUser']);
+
+        // Filter based on user role
+        if ($userRole === 'Doctor') {
+            // Doctors see reduction requests for their referrals
+            $reductionRequests->whereHas('referral', function ($query) use ($user) {
                 $query->where('doctor_user_id', $user->user_id);
-            })
-            ->where('doctor_decision', 'pending')
-            ->orderBy('created_at', 'desc')
-            ->get();
+            });
+        } elseif ($userRole === 'Attorney') {
+            // Attorneys see reduction requests for their cases
+            $reductionRequests->whereHas('case', function ($query) use ($user) {
+                $query->where('attorney_id', $user->user_id);
+            });
+        }
+
+        // Get all reduction requests (not just pending)
+        $reductionRequests = $reductionRequests->orderBy('created_at', 'desc')->get();
 
         return Inertia::render('panel/user/referrals/reduction-requests', [
             'reductionRequests' => $reductionRequests,
+            'userRole' => $userRole,
         ]);
+    }
+
+    /**
+     * Store a new reduction request (Attorney role).
+     */
+    public function storeReductionRequest(Request $request)
+    {
+        $user = auth()->user();
+        $userRole = $user->roles->first()->name;
+
+        // Only attorneys can create reduction requests
+        if ($userRole !== 'Attorney') {
+            abort(403, 'Only attorneys can create reduction requests.');
+        }
+
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,case_id',
+            'referral_id' => 'required|exists:referrals,referral_id',
+            'amount' => 'required|numeric|min:0',
+            'file' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        // Verify the attorney owns this case
+        $case = \App\Models\Cases::findOrFail($validated['case_id']);
+        if ($case->attorney_id != $user->user_id) {
+            abort(403, 'You can only create reduction requests for your own cases.');
+        }
+
+        // Verify the referral belongs to this case
+        $referral = \App\Models\Referral::findOrFail($validated['referral_id']);
+        if ($referral->case_id != $case->case_id) {
+            abort(403, 'The referral must belong to the specified case.');
+        }
+
+        // Store the uploaded file
+        $filePath = null;
+        if ($request->hasFile('file')) {
+            $filePath = $request->file('file')->store('reduction_files', 'public');
+        }
+
+        // Create the reduction request
+        $reductionRequest = \App\Models\ReductionRequest::create([
+            'case_id' => $validated['case_id'],
+            'referral_id' => $validated['referral_id'],
+            'amount' => $validated['amount'],
+            'file_path' => $filePath,
+            'referral_status' => 'reduction_request_sent',
+            'doctor_decision' => 'pending',
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return response()->json([
+            'message' => 'Reduction request created successfully',
+            'data' => $reductionRequest,
+        ], 201);
     }
 
     /**
