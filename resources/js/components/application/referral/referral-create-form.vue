@@ -281,6 +281,25 @@ export default {
                         zip_code: attorneyData.law_firm?.zip_code || "",
                     },
                 };
+            } else {
+                // If attorney data not found in list, create from current user data
+                console.warn('Attorney data not found in attorneys list, using current user data');
+                autoSelectedAttorney = {
+                    name: currentUser.name,
+                    email: currentUser.email,
+                    phone_number: currentUser.phone_number || "",
+                    user_id: currentUser.user_id,
+                    law_firm: {
+                        name: currentUser.lawFirm?.name || "",
+                        email: currentUser.lawFirm?.email || "",
+                        phone_number: currentUser.lawFirm?.phone_number || "",
+                        address_line_1: currentUser.lawFirm?.address_line_1 || "",
+                        address_line_2: currentUser.lawFirm?.address_line_2 || "",
+                        city: currentUser.lawFirm?.city || "",
+                        state_id: currentUser.lawFirm?.state_id || currentUser.state_id || "",
+                        zip_code: currentUser.lawFirm?.zip_code || "",
+                    },
+                };
             }
         } else if (userRole === 'Doctor') {
             // Find the current user in doctors list and auto-select
@@ -746,7 +765,26 @@ export default {
                     };
                     this.onFormFieldChange(); // Hide success message when auto-selection happens
                 } else {
-                    this.$toast().warning("Attorney data not found. Please contact administrator.");
+                    // Use current user data if not found in attorneys list
+                    console.warn('Attorney data not found in attorneys list, using current user data');
+                    this.form.attorney_user_id = this.currentUser.user_id;
+                    this.form.attorney = {
+                        name: this.currentUser.name,
+                        email: this.currentUser.email,
+                        phone_number: this.currentUser.phone_number || "",
+                        user_id: this.currentUser.user_id,
+                        law_firm: {
+                            name: this.currentUser.lawFirm?.name || "",
+                            email: this.currentUser.lawFirm?.email || "",
+                            phone_number: this.currentUser.lawFirm?.phone_number || "",
+                            address_line_1: this.currentUser.lawFirm?.address_line_1 || "",
+                            address_line_2: this.currentUser.lawFirm?.address_line_2 || "",
+                            city: this.currentUser.lawFirm?.city || "",
+                            state_id: this.currentUser.lawFirm?.state_id || this.currentUser.state_id || "",
+                            zip_code: this.currentUser.lawFirm?.zip_code || "",
+                        },
+                    };
+                    this.onFormFieldChange();
                 }
             } else if (this.isDoctor) {
                 const doctorData = (this.doctors?.data || []).find(doctor => doctor.user_id === this.currentUser.user_id);

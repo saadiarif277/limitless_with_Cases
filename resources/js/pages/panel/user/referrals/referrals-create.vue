@@ -29,6 +29,7 @@
             :CptCodes="CptCodes"
             :list-route="'panel.user.referrals.index'"
             :store-route="'panel.user.referrals.store'"
+            :selected-state-id="selectedStateId"
         />
     </div>
 </template>
@@ -103,6 +104,11 @@ export default {
             type: Object,
             required: false,
             default: () => {},
+        },
+        selectedStateId: {
+            type: [String, Number],
+            required: false,
+            default: null,
         },
     },
     created() {
