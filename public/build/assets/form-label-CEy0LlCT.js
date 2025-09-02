@@ -1,0 +1,1 @@
+import{_ as o}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{o as t,c as r,h as s}from"./app-D0YmfmiQ.js";const a={name:"FormLabelComponent"},n={class:"v-form-label text-sm text-gray-500"};function c(e,l,m,f,p,_){return t(),r("label",n,[s(e.$slots,"default")])}const u=o(a,[["render",c]]);export{u as default};

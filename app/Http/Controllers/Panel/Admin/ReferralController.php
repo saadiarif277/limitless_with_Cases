@@ -106,14 +106,27 @@ class ReferralController extends Controller
      */
     public function create(Request $request): Response
     {
+        // Get the selected state (default to first available state if none selected)
+        $selectedStateId = $request->get('state_id');
+
+        // If no state_id provided, get the first available state
+        if (!$selectedStateId) {
+            $firstState = \App\Models\State::first();
+            $selectedStateId = $firstState ? $firstState->state_id : null;
+        }
+
+
+
         return Inertia::render('panel/admin/referrals/referrals-create', [
             'attorneys' => UserResource::collection(
                 User::query()
                     ->whereHas('roles', function($query) {
                         $query->where('name', 'Attorney');
                     })
-                    ->whereHas('lawFirm', function ($query) use ($request) {
-                        $query->where('law_firms.state_id', $request->get('state_id', 0));
+                    ->when($selectedStateId, function($query) use ($selectedStateId) {
+                        $query->whereHas('lawFirm', function($subQuery) use ($selectedStateId) {
+                            $subQuery->where('law_firms.state_id', $selectedStateId);
+                        });
                     })
                     ->orderBy('name')
                     ->get()
@@ -121,11 +134,13 @@ class ReferralController extends Controller
             'doctors' => UserResource::collection(
                 User::query()
                     ->with('clinics')
-                    ->whereHas('clinics', function ($query) use ($request) {
-                        $query->where('clinics.state_id', $request->get('state_id', 0));
-                    })
                     ->whereHas('roles', function($query) {
                         $query->where('name', 'Doctor');
+                    })
+                    ->when($selectedStateId, function($query) use ($selectedStateId) {
+                        $query->whereHas('clinics', function($subQuery) use ($selectedStateId) {
+                            $subQuery->where('clinics.state_id', $selectedStateId);
+                        });
                     })
                     ->orderBy('name')
                     ->get()
@@ -163,7 +178,9 @@ class ReferralController extends Controller
                     ->whereHas('roles', function($query) {
                         $query->where('name', 'Patient');
                     })
-                    ->where('state_id', $request->get('state_id', 0))
+                    ->when($selectedStateId, function($query) use ($selectedStateId) {
+                        $query->where('state_id', $selectedStateId);
+                    })
                     ->orderBy('name')
                     ->get()
             ),
@@ -188,7 +205,7 @@ class ReferralController extends Controller
             ),
             'CptCodes' => CptCodeResource::collection(
                     CptCode::all()
-            ),
+            )->toArray(request()),
            'physicians' => UserResource::collection(
                 User::query()
                     ->whereHas('roles', function ($query) {
@@ -197,7 +214,7 @@ class ReferralController extends Controller
                     ->orderBy('name')
                     ->get()
             ),
-
+            'selectedStateId' => $selectedStateId,
         ]);
     }
 
@@ -390,5 +407,73 @@ class ReferralController extends Controller
         $referral->documents()->delete();
         $referral->delete();
         return to_route('panel.admin.referrals.index');
+    }
+
+    /**
+     * Get filtered data by state for AJAX requests.
+     */
+    public function getDataByState(Request $request)
+    {
+        try {
+            $stateId = $request->get('state_id');
+
+            Log::info('Admin AJAX getDataByState called', [
+                'state_id' => $stateId,
+                'request_data' => $request->all()
+            ]);
+
+            if (!$stateId) {
+                return response()->json(['error' => 'State ID is required'], 400);
+            }
+
+            // Get filtered data for the selected state
+            $attorneysData = User::query()
+                ->whereHas('roles', function($query) {
+                    $query->where('name', 'Attorney');
+                })
+                ->whereHas('lawFirm', function($query) use ($stateId) {
+                    $query->where('law_firms.state_id', $stateId);
+                })
+                ->orderBy('name')
+                ->get();
+
+            $doctorsData = User::query()
+                ->with(['clinics'])
+                ->whereHas('roles', function($query) {
+                    $query->where('name', 'Doctor');
+                })
+                ->whereHas('clinics', function($query) use ($stateId) {
+                    $query->where('clinics.state_id', $stateId);
+                })
+                ->orderBy('name')
+                ->get();
+
+            $patientsData = User::query()
+                ->whereHas('roles', function($query) {
+                    $query->where('name', 'Patient');
+                })
+                ->where('state_id', $stateId)
+                ->orderBy('name')
+                ->get();
+
+            Log::info('Admin AJAX getDataByState results', [
+                'attorneys_count' => $attorneysData->count(),
+                'doctors_count' => $doctorsData->count(),
+                'patients_count' => $patientsData->count(),
+            ]);
+
+            return response()->json([
+                'attorneys' => UserResource::collection($attorneysData),
+                'doctors' => UserResource::collection($doctorsData),
+                'patients' => UserResource::collection($patientsData),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in admin getDataByState', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json(['error' => 'Internal server error'], 500);
+        }
     }
 }

@@ -15,8 +15,8 @@ class UpdateReferralRequest extends FormRequest
         $user = auth()->user();
         $userRole = $user->roles->first()->name;
 
-        // Only attorneys, doctors, and case managers can update referrals
-        return in_array($userRole, ['Attorney', 'Doctor', 'Case_manager']);
+        // Allow administrators, attorneys, doctors, and case managers to update referrals
+        return in_array($userRole, ['Administrator', 'Admin', 'Attorney', 'Doctor', 'Case_manager']);
     }
 
     /**
@@ -104,6 +104,7 @@ class UpdateReferralRequest extends FormRequest
             case 'Attorney':
                 return $documentType->document_category_id == \App\Models\DocumentCategory::FINANCIAL;
 
+            case 'Administrator':
             case 'Admin':
             case 'Case_manager':
                 return true;

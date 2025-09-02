@@ -251,6 +251,7 @@ export default {
         storeRoute: { type: String, default: "panel.admin.referrals.store" },
         icdCodes: { type: Object, required: false },
         CptCodes: { type: Object, required: false },
+        selectedStateId: { type: [String, Number], required: false, default: null },
     },
     data() {
         const currentUser = this.$page.props.auth.user;
@@ -308,6 +309,7 @@ export default {
         }
 
         return {
+            isInitializing: true, // Flag to prevent redirects during initialization
             form: useForm({
                 referral_date: new Date().toISOString().split('T')[0],
                 referral_status_id: 1,
@@ -408,6 +410,9 @@ export default {
         isCaseManager() {
             return this.userRole === 'Case_manager';
         },
+        isAdmin() {
+            return this.userRole === 'Administrator' || this.userRole === 'Admin';
+        },
         // Get available states for the dropdown
         availableStates() {
             // For attorneys, only show their own state
@@ -421,7 +426,7 @@ export default {
                 }
             }
 
-            // For other roles or if no state restriction, show all states
+            // For admin users and other roles, show all states
             const states = this.referralStates?.data || this.states?.data || [];
             return states.map(state => ({
                 label: state.name,
@@ -433,7 +438,7 @@ export default {
             const state = this.availableStates.find(s => s.value == this.form.state_id);
             return state ? state.label : 'Not selected';
         },
-        // Use local data for attorneys
+                // Use local data for attorneys
         attorneysData() {
             // For attorneys, only show attorneys from their own state
             if (this.isAttorney && this.currentUser?.state_id) {
@@ -442,9 +447,13 @@ export default {
                 ) || [];
                 return { data: filteredAttorneys };
             }
+            // For admin users, return the data as-is (already filtered by backend)
+            if (this.isAdmin) {
+                return this.localAttorneys;
+            }
             return this.localAttorneys;
         },
-        // Use local data for doctors
+                // Use local data for doctors
         doctorsData() {
             // For attorneys, only show doctors from their state
             if (this.isAttorney && this.currentUser?.state_id) {
@@ -453,9 +462,13 @@ export default {
                 ) || [];
                 return { data: filteredDoctors };
             }
+            // For admin users, return the data as-is (already filtered by backend)
+            if (this.isAdmin) {
+                return this.localDoctors;
+            }
             return this.localDoctors;
         },
-        // Use local data for patients
+                // Use local data for patients
         patientsData() {
             // For attorneys, only show patients from their state
             if (this.isAttorney && this.currentUser?.state_id) {
@@ -463,6 +476,10 @@ export default {
                     patient.state_id == this.currentUser.state_id
                 ) || [];
                 return { data: filteredPatients };
+            }
+            // For admin users, return the data as-is (already filtered by backend)
+            if (this.isAdmin) {
+                return this.localPatients;
             }
             return this.localPatients;
         },
@@ -481,16 +498,42 @@ export default {
         'form.doctor.clinic.clinic_id'(newValue) {
             this.form.clinic_id = newValue;
         },
-        // Watch for state changes to update available doctors and patients
+                // Watch for state changes to update available doctors and patients
         'form.state_id'(newStateId, oldStateId) {
+            // Skip redirects during initialization
+            if (this.isInitializing) {
+                return;
+            }
+
             if (newStateId && newStateId !== oldStateId) {
+                // For attorneys, prevent changing to a different state
                 if (this.isAttorney && this.currentUser?.state_id && newStateId != this.currentUser.state_id) {
                     this.form.state_id = this.currentUser.state_id; // Revert
                     return;
                 }
-                this.updateDataByState(newStateId);
+                // For admin users, redirect to the same page with new state_id
+                // Only redirect if the current URL doesn't already have the correct state_id
+                if (this.isAdmin || !this.isAttorney) {
+                    const currentUrl = new URL(window.location.href);
+                    const currentStateId = currentUrl.searchParams.get('state_id');
+
+                    // Only redirect if the URL state_id is different from the form state_id
+                    if (currentStateId != newStateId) {
+                        this.redirectWithState(newStateId);
+                    }
+                }
             }
         },
+        // Watch for doctor selection to ensure medical_specialty_id is set
+        'form.doctor.user_id'(newDoctorId) {
+            if (newDoctorId) {
+                const selectedDoctor = this.doctorsData?.data?.find(doctor => doctor.user_id == newDoctorId);
+                if (selectedDoctor) {
+                    this.form.doctor.medical_specialty_id = selectedDoctor.medical_specialty_id || 1;
+                }
+            }
+        },
+        // Note: Local data watchers removed since we're using URL-based state changes
         // Watch for any form changes to hide success message
         'form.data()'() {
             if (this.showSuccessMessage) {
@@ -715,7 +758,7 @@ export default {
                         name: doctorData.name,
                         email: doctorData.email,
                         phone_number: doctorData.phone_number || "",
-                        medical_specialty_id: doctorData.medical_specialty_id || null, // Add required medical_specialty_id
+                        medical_specialty_id: doctorData.medical_specialty_id || 1, // Default to first medical specialty if not set
                         clinic: {
                             clinic_id: doctorData.clinics?.[0]?.clinic_id || "",
                             name: doctorData.clinics?.[0]?.name || "",
@@ -752,48 +795,31 @@ export default {
                 this.showSuccessMessage = false;
             }
         },
-        updateDataByState(stateId) {
+        redirectWithState(stateId) {
             if (!stateId) return;
 
-            this.isUpdatingData = true;
-            this.onFormFieldChange(); // Hide success message when state changes
-            this.fetchDataByState(stateId);
-        },
-        async fetchDataByState(stateId) {
-            try {
-                const response = await fetch(this.route('referrals.data-by-state', { state_id: stateId }), {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                });
+            // Redirect to the same page with the new state_id parameter
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('state_id', stateId);
 
-                if (response.ok) {
-                    const data = await response.json();
+            console.log('Redirecting to:', currentUrl.toString());
 
-                    // Update the local data with the filtered results
-                    if (data.attorneys && Array.isArray(data.attorneys.data)) {
-                        this.localAttorneys = data.attorneys;
-                    }
-                    if (data.doctors && Array.isArray(data.doctors.data)) {
-                        this.localDoctors = data.doctors;
-                    }
-                    if (data.patients && Array.isArray(data.patients.data)) {
-                        this.localPatients = data.patients;
-                    }
-                } else {
-                    console.error('Failed to fetch data for state:', stateId, response.status, response.statusText);
-                }
-            } catch (error) {
-                console.error('Error fetching data for state:', error);
-            } finally {
-                this.isUpdatingData = false; // Reset loading state
-            }
+            // Use Inertia to navigate to the new URL
+            this.$inertia.visit(currentUrl.toString(), {
+                method: 'get',
+                preserveState: false,
+                preserveScroll: false,
+                replace: true
+            });
         },
+        // Note: AJAX-based state updates have been replaced with URL-based redirects
+        // This ensures proper data loading and avoids reactivity issues
         // Initialize the form state based on user's default state
         initializeFormState() {
-            if (this.currentUser?.state_id && !this.form.state_id) {
+            // Use selectedStateId prop if provided, otherwise fall back to user's state
+            if (this.selectedStateId && !this.form.state_id) {
+                this.form.state_id = this.selectedStateId;
+            } else if (this.currentUser?.state_id && !this.form.state_id) {
                 this.form.state_id = this.currentUser.state_id;
             }
 
@@ -801,6 +827,9 @@ export default {
             if (this.isAttorney && this.currentUser?.state_id) {
                 this.form.state_id = this.currentUser.state_id;
             }
+
+            // Mark initialization as complete
+            this.isInitializing = false;
         },
         getCptCodeOptions() {
             // CptCodes should now be an array from the backend

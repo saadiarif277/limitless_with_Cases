@@ -55,16 +55,16 @@
                             <h2 class="text-sm text-color-primary uppercase tracking-wide">Bill To</h2>
 
                             <div>
-                                <h4 class="text-color-default">{{ $referral->patientUser->name }}</h4>
+                                <h4 class="text-color-default">{{ $referral->patientUser->name ?? 'N/A' }}</h4>
 
                                 <p class="italic text-color-muted">
-                                    {{ $referral->patientUser->address_line_1 }},
+                                    {{ $referral->patientUser->address_line_1 ?? 'N/A' }},
                                     @if($referral->patientUser->address_line_2)
                                         {{ $referral->patientUser->address_line_2 }},
                                     @endif
-                                    {{ $referral->patientUser->city }},
-                                    {{ $referral->patientUser->state->name }},
-                                    {{ $referral->patientUser->zip_code }}
+                                    {{ $referral->patientUser->city ?? 'N/A' }},
+                                    {{ $referral->patientUser->state->name ?? 'N/A' }},
+                                    {{ $referral->patientUser->zip_code ?? 'N/A' }}
                                 </p>
                             </div>
                         </td>
@@ -98,11 +98,15 @@
                     <tr style="border-top: 1px solid lightgray">
                         <td class="text-color-default text-sm px-6 py-4">Limitless Regenerative, LLC</td>
                         <td class="text-color-default text-sm px-6 py-4" align="right">1</td>
-                        <td class="text-color-default text-sm px-6 py-4">{{ $referral->doctorUser->name }}</td>
+                        <td class="text-color-default text-sm px-6 py-4">{{ $referral->doctorUser->name ?? 'N/A' }}</td>
                         <td class="text-color-default text-sm px-6 py-4">
-                            {{ $referral->patientUser->name }}
+                            {{ $referral->patientUser->name ?? 'N/A' }}
                             <div class="text-color-muted italic">
-                                {{ $referral->patientUser->birthdate->format('F d, Y') }}
+                                @if($referral->patientUser->birthdate)
+                                    {{ $referral->patientUser->birthdate->format('F d, Y') }}
+                                @else
+                                    N/A
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -114,7 +118,7 @@
             <div class="bg-gray-50 py-3 text-left px-6" style="border-bottom: 2px solid lightgray;">
                 <h2 class="text-sm text-color-primary uppercase tracking-wide">Breakdown of Charges</h2>
             </div>
-            
+
             <table style="width: 100%;">
                 <thead>
                     <tr>

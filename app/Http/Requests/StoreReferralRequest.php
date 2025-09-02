@@ -19,8 +19,8 @@ class StoreReferralRequest extends FormRequest
         $user = auth()->user();
         $userRole = $user->roles->first()->name;
 
-        // Only attorneys, doctors, and case managers can create referrals
-        return in_array($userRole, ['Attorney', 'Doctor', 'Case_manager']);
+        // Allow administrators, attorneys, doctors, and case managers to create referrals
+        return in_array($userRole, ['Administrator', 'Attorney', 'Doctor', 'Case_manager', 'Office Manager']);
     }
 
     /**
@@ -64,7 +64,7 @@ class StoreReferralRequest extends FormRequest
             'doctor.email' => 'required_without:doctor.user_id|nullable|email',
             'doctor.phone_number' => 'nullable|string',
             'doctor.notes' => 'nullable|string',
-            'doctor.medical_specialty_id' => 'required_without:doctor.user_id|integer|exists:App\Models\MedicalSpecialty,medical_specialty_id',
+            'doctor.medical_specialty_id' => 'required_without:doctor.user_id|nullable|integer|exists:App\Models\MedicalSpecialty,medical_specialty_id',
 
             // Doctor/Clinic
             'doctor.clinic' => 'required_without:doctor.user_id|nullable|array',
@@ -127,6 +127,8 @@ class StoreReferralRequest extends FormRequest
         return $baseRules;
     }
 
+
+
     /**
      * Get the error messages for the defined validation rules.
      *
@@ -172,6 +174,12 @@ class StoreReferralRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        // Convert empty strings to null for medical_specialty_id
+        $doctorData = $this->doctor;
+        if (isset($doctorData['medical_specialty_id']) && $doctorData['medical_specialty_id'] === '') {
+            $doctorData['medical_specialty_id'] = null;
+        }
+
         $this->merge([
             'referral_reason_ids' => array_values($this->patient['referral_reason_ids']),
             'injury_date' => $this->patient['injury_date'],
@@ -179,6 +187,7 @@ class StoreReferralRequest extends FormRequest
             'doctor_user_id' => $this->doctor['user_id'] ?? null,
             'attorney_user_id' => $this->attorney['user_id'] ?? null,
             'clinic_id' => $this->doctor['clinic']['clinic_id'] ?? null,
+            'doctor' => $doctorData,
         ]);
     }
 
@@ -190,6 +199,18 @@ class StoreReferralRequest extends FormRequest
         $validator->after(function ($validator) {
             $user = auth()->user();
             $userRole = $user->roles->first()->name;
+
+            // Handle medical_specialty_id validation
+            if (isset($this->doctor['medical_specialty_id'])) {
+                $medicalSpecialtyId = $this->doctor['medical_specialty_id'];
+
+                // Convert string to integer if needed
+                if (is_string($medicalSpecialtyId) && $medicalSpecialtyId !== '') {
+                    $this->merge([
+                        'doctor' => array_merge($this->doctor, ['medical_specialty_id' => (int) $medicalSpecialtyId])
+                    ]);
+                }
+            }
 
             if ($this->has('documents') && is_array($this->documents)) {
                 foreach ($this->documents as $documentTypeId => $document) {

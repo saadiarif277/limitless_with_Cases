@@ -157,6 +157,10 @@ Route::group(['middleware' => ['auth']], function() {
 
         Route::group(['as' => 'panel.admin.'], function () {
 
+            // AJAX endpoint for getting filtered data by state for admin
+            Route::get('/referrals/data-by-state', [\App\Http\Controllers\Panel\Admin\ReferralController::class, 'getDataByState'])
+                ->name('referrals.data-by-state');
+
             Route::resources([
                 'appointments' => \App\Http\Controllers\Panel\Admin\AppointmentController::class,
                 'clinics' => \App\Http\Controllers\Panel\Admin\ClinicController::class,

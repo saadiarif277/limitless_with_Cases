@@ -28,6 +28,7 @@
             :states="states"
             :list-route="'panel.admin.referrals.index'"
             :store-route="'panel.admin.referrals.store'"
+            :selected-state-id="selectedStateId"
         />
     </div>
 </template>
@@ -97,6 +98,11 @@ export default {
             type: Object, // Expecting an array
         required: false,
         default: () => {},
+        },
+        selectedStateId: {
+            type: [String, Number],
+            required: false,
+            default: null,
         }
      },
      created() {

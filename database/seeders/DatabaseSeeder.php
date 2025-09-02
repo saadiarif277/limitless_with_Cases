@@ -32,6 +32,8 @@ class DatabaseSeeder extends Seeder
 
             // 400
             Production\MedicalSpecialtySeeder::class,
+            Production\LawFirmSeeder::class,
+            Production\ClinicSeeder::class,
         ]);
 
         if (!app()->environment(['production', 'staging'])) {
